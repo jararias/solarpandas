@@ -1,0 +1,35 @@
+[project]
+name = "solarpandas"
+version = "0.1.0"
+description = "pandas for solar resource"
+readme = "README.md"
+authors = [
+    { name = "Jose A Ruiz Arias", email = "jararias@uma.es" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "loguru>=0.7.3",
+    "numpy>=2.4.4",
+    "pandas>=3.0.2",
+    "platformdirs>=4.9.6",
+    "pyarrow>=24.0.0",
+    "sparta-solar>=0.1.0",
+    "sunwhere>=1.4.0",
+    "tomlkit>=0.15.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipython>=9.13.0",
+    "matplotlib>=3.10.9",
+    "pyqt6>=6.11.0",
+    "ruff>=0.15.12",
+]
+
+[tool.uv.build-backend]
+# Incluye archivos o carpetas específicas en el paquete final
+source-include = ["sample_data/*"]
