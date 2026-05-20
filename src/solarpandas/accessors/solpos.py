@@ -159,6 +159,14 @@ class SolarPositionAccessor:
         return self.true_solar_time
 
     @property
+    def true_solar_day(self):
+        return self.true_solar_time.dt.floor("D")
+
+    @property
+    def tsd(self):
+        return self.true_solar_day
+
+    @property
     def local_solar_time(self):
         deltat = pd.Timedelta(self._sdf.longitude * 4, "min")
         return SolarSeries(

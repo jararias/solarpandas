@@ -1,6 +1,9 @@
 
+import copy
 import json
 import linecache
+from numbers import Number
+from typing import Self, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -82,16 +85,13 @@ class SolarSeries(pd.Series):
     def custom_metadata(self):
         return self._custom_metadata
 
-    def clone(self, other: pd.Series | pd.DataFrame):
-        assert isinstance(other, (pd.Series, pd.DataFrame))
-        cls = SolarDataFrame if isinstance(other, pd.DataFrame) else SolarSeries
-        return cls(
-            data=other,
+    def clone(self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number) -> Self:
+        return self.__class__(
+            data=np.full((len(self),), other) if isinstance(other, Number) else copy.copy(other),
             latitude=self.latitude,
             longitude=self.longitude,
             elevation=self.elevation,
-            custom_metadata=self.custom_metadata,
-        )
+            custom_metadata=copy.deepcopy(self.custom_metadata))
 
     # def iplot(self, *args, time_ref: str = "lst", **kwargs):
     #     from .viz_helpers import on_key_pressed_daily_step, onscroll_daily_step
@@ -227,16 +227,13 @@ class SolarDataFrame(pd.DataFrame):
     def describe(self):
         return self.as_pandas().describe()
 
-    def clone(self, other: pd.Series | pd.DataFrame):
-        assert isinstance(other, (pd.Series, pd.DataFrame))
-        cls = SolarDataFrame if isinstance(other, pd.DataFrame) else SolarSeries
-        return cls(
-            data=other,
+    def clone(self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number) -> Self:
+        return self.__class__(
+            data=np.full((len(self),), other) if isinstance(other, Number) else copy.copy(other),
             latitude=self.latitude,
             longitude=self.longitude,
             elevation=self.elevation,
-            custom_metadata=self.custom_metadata,
-        )
+            custom_metadata=copy.deepcopy(self.custom_metadata))
 
     def __repr__(self):
         epilogue = "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"

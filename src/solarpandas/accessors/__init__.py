@@ -1,7 +1,11 @@
 
 # ruff: noqa: F401
 
-from .solpos import SolarPositionAccessor
+from .solpos import (
+    SolarPositionAccessor,
+    get_solpos_cache_info,
+    clear_solpos_cache,
+)
 from .clearsky import (
     ClearskyIrradianceAccessor,
     LTAIrradianceAccessor,

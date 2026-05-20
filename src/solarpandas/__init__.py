@@ -4,7 +4,11 @@
 import importlib.metadata
 
 from . import config, sample_data
-from .accessors import SolarPositionAccessor
+from .accessors import (
+    SolarPositionAccessor,
+    get_solpos_cache_info,
+    clear_solpos_cache,
+)
 from .accessors import (
     ClearskyIrradianceAccessor,
     LTAIrradianceAccessor,

@@ -78,7 +78,6 @@ class BaseClearskyIrradianceAccessor:
             raise AttributeError(f"required a SolarSeries or SolarDataFrame instance. Got {name}")
         return obj
 
-    @property
     def _get_cached_clearsky(self, variable: Literal["ghi", "dni", "dif", "csi"]):
         clearsky = _compute_cached_clearsky(
             tuple(self._sdf.index),
