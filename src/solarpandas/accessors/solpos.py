@@ -22,7 +22,8 @@ def _compute_cached_solpos(
     engine: str
 ) -> sunwhere._base.Sunpos:
     """Compute cached solar position."""
-    logger.debug(f"evaluating solar position with `{algorithm}` algorithm, refraction={refraction}, engine=`{engine}`...")
+    logger.debug(f"evaluating solar position with `{algorithm}` algorithm, "
+                 f"refraction={refraction}, engine=`{engine}`...")
     args = (pd.DatetimeIndex(index), latitude, longitude)
     kwargs = {"algorithm": algorithm, "refraction": refraction, "engine": engine}
     return sunwhere.sites(*args, **kwargs)
@@ -44,7 +45,8 @@ def get_solpos_cache_info():
     """Get information about the current state of the solar position cache.
 
     Returns:
-        dict: A dictionary containing cache statistics such as hits, misses, and current size.
+        dict: A dictionary containing cache statistics such as hits, misses,
+        and current size.
 
     Example::
 
@@ -66,10 +68,12 @@ def get_solpos_cache_info():
 class SolarPositionAccessor:
     """Accessor for computing solar position.
     
-    By default, it caches results using the specified algorithm, refraction, and engine in config options (`solar-position.algorithm`,
-    `solar-position.refraction`, and `solar-position.engine`).
+    By default, it caches results using the specified algorithm, refraction, and
+    engine in config options (`solar-position.algorithm`, `solar-position.refraction`,
+    and `solar-position.engine`).
 
-    For a one-off calculations, the ``compute`` method allows bypassing the cache and specifying the algorithm, refraction, and engine directly.
+    For a one-off calculations, the ``compute`` method allows bypassing the cache
+    and specifying the algorithm, refraction, and engine directly.
     
     Example:
 
@@ -93,8 +97,14 @@ class SolarPositionAccessor:
             raise AttributeError(f"required a SolarSeries or SolarDataFrame instance. Got {name}")
         return obj
 
-    def compute(self, algorithm: str = "psa", refraction: bool = True, engine: str = "numexpr") -> sunwhere._base.Sunpos:
-        logger.debug(f"evaluating solar position with `{algorithm}` algorithm, refraction={refraction}, engine=`{engine}`...")
+    def compute(
+        self,
+        algorithm: str = "psa",
+        refraction: bool = True,
+        engine: str = "numexpr"
+    ) -> sunwhere._base.Sunpos:
+        logger.debug(f"evaluating solar position with `{algorithm}` algorithm, "
+                     f"refraction={refraction}, engine=`{engine}`...")
         args = (self._sdf.index, self._sdf.latitude, self._sdf.longitude)
         kwargs = {"algorithm": algorithm, "refraction": refraction, "engine": engine}
         return sunwhere.sites(*args, **kwargs)

@@ -74,6 +74,10 @@ model = "SPARTA"  # clearsky model to use for irradiance estimation
 atmosphere = "crs_soda"  # atmosphere dataset to use for clearsky calculations
 lta_atmosphere = "merra2_lta"  # atmosphere dataset for long-term average clearsky
 cda_atmosphere = "merra2_cda"  # atmosphere dataset for clear-day analysis
+
+[bsrn]  # table for BSRN data retrieval settings
+# data_dir = "."  # local directory to store BSRN data (leave empty for default)
+server = "ftp.bsrn.awi.de"
 """
 
 def get_config_path() -> Path:

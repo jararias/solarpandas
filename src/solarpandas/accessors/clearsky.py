@@ -21,7 +21,8 @@ def _compute_cached_clearsky(
     atmosphere: str,
     model: str):
     """Compute cached clearsky irradiance."""
-    logger.debug(f"evaluating clearsky irradiance with `{model}` model and `{atmosphere}` atmosphere...")
+    logger.debug(f"evaluating clearsky irradiance with `{model}` model "
+                 f"and `{atmosphere}` atmosphere...")
     atmos_obj = getattr(spartasolar.atmosphere, atmosphere)
     args = (pd.DatetimeIndex(index), latitude, longitude)
     try:
@@ -119,11 +120,11 @@ class BaseClearskyIrradianceAccessor:
 class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
     """General accessor for computing clearsky irradiance.
     
-    By default, it caches results using the specified model and atmosphere in config options (`clearsky.model`
-    and `clearsky.atmosphere`).
+    By default, it caches results using the specified model and atmosphere in
+    config options (`clearsky.model` and `clearsky.atmosphere`).
 
-    For a one-off calculations, the ``compute`` method allows bypassing the cache and specifying the model and
-    atmosphere directly.
+    For a one-off calculations, the ``compute`` method allows bypassing the
+    cache and specifying the model and atmosphere directly.
     
     Example:
 
@@ -134,12 +135,17 @@ class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
         data.clearsky.compute("crs_soda", "SPARTA").ghi
     """
 
-    def compute(self, atmosphere: Literal["merra2_daily", "merra2_gee", "merra2_lta", "crs_soda", "custom"], model: str = "SPARTA"):
+    def compute(
+        self,
+        atmosphere: Literal["merra2_daily", "merra2_gee", "merra2_lta", "crs_soda", "custom"],
+        model: str = "SPARTA"
+    ):
         logger.debug(f"evaluating clearsky with `{model}` model and `{atmosphere}` atmosphere...")
         if not hasattr(spartasolar.atmosphere, atmosphere):
             raise ValueError(f"invalid clearsky atmosphere `{atmosphere}`")
         if atmosphere == "custom":
-            raise NotImplementedError("TODO: implement support for user-provided custom atmosphere datasets from dataframe columns")
+            raise NotImplementedError("TODO: implement support for user-provided custom "
+                                      "atmosphere datasets from dataframe columns")
         atmos_obj = getattr(spartasolar.atmosphere, atmosphere)
         args = (self._sdf.index, self._sdf.latitude, self._sdf.longitude)
         try:
