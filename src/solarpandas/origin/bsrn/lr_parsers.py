@@ -123,7 +123,7 @@ def parse(
     return values
 
 
-def parse_logical_record_0001(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0001(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -140,7 +140,7 @@ def parse_logical_record_0001(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0002(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0002(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -177,11 +177,11 @@ def parse_logical_record_0002(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0003(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0003(lines: list[str], **kwargs) -> dict[str, Any]:
     return {'message': parse(lines[0], fortran_pattern="A80")[0]}
 
 
-def parse_logical_record_0004(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0004(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -219,7 +219,7 @@ def parse_logical_record_0004(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0005(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0005(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -239,7 +239,7 @@ def parse_logical_record_0005(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0006(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0006(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -257,7 +257,7 @@ def parse_logical_record_0006(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0007(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0007(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -291,7 +291,7 @@ def parse_logical_record_0007(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0008(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0008(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -352,7 +352,7 @@ def parse_logical_record_0008(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0009(lines: list[str]) -> dict[str, Any]:
+def parse_logical_record_0009(lines: list[str], **kwargs) -> dict[str, Any]:
     elements = {}
     ilines = iter(lines)
 
@@ -375,11 +375,16 @@ def parse_logical_record_0009(lines: list[str]) -> dict[str, Any]:
     return elements
 
 
-def parse_logical_record_0100(lines: list[str]) -> pd.DataFrame:
+def parse_logical_record_0100(lines: list[str], **kwargs) -> pd.DataFrame:
     """Parser for the logical record 0100, which contains the basic measurements."""
 
     def warn(msg: str, day: int | None = None):
-        logger.warning(msg if day is None else f"<red>LR0100 @ day{day}</red>: {msg}")
+        header = ""
+        if day is not None:
+            header += f"<red>LR0100 @ day {day}</red>"
+        if day is not None and "path" in kwargs:
+            header += f" <red>in {kwargs['path'].name}</red>"
+        logger.warning(f"{header}: {msg}")
 
     def check_day_consistency(df_day: pd.DataFrame) -> pd.DataFrame:
 
@@ -449,7 +454,7 @@ def parse_logical_record_0100(lines: list[str]) -> pd.DataFrame:
     return data
   
 
-def parse_logical_record_0300(lines: list[str]) -> pd.DataFrame:
+def parse_logical_record_0300(lines: list[str], **kwargs) -> pd.DataFrame:
     """Parser for the logical record 0300, which contains the basic measurements."""
 
     def warn(msg: str, day: int | None = None):
@@ -514,7 +519,7 @@ def parse_logical_record_0300(lines: list[str]) -> pd.DataFrame:
     return data
 
 
-def parse_logical_record_0500(lines: list[str]) -> pd.DataFrame:
+def parse_logical_record_0500(lines: list[str], **kwargs) -> pd.DataFrame:
     """Parser for the logical record 0500, which contains the basic measurements."""
 
     def warn(msg: str, day: int | None = None):

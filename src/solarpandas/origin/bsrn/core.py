@@ -1,25 +1,65 @@
+
 import functools
 import gzip
 import itertools
 import json
 import multiprocessing as mp
 import re
-import time
 from dataclasses import dataclass
-from typing import Callable, Literal, Sequence
+from pathlib import Path
+from typing import Any, Callable, Literal, Sequence
 
 import numpy as np
 import pandas as pd
 import platformdirs
 from loguru import logger
 
+from ...base import SolarDataFrame
 from ...config import get_option
-from . import helpers, lr_parsers, tables
+from . import helpers, lr_parsers
 from .types import LogicalRecordName, Month, Site, Year, validate_type
-from .utils import time_interpolation
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
+
+
+SUPPORTED_LOGICAL_RECORDS = [
+    "LR0001",
+    "LR0002",
+    "LR0003",
+    "LR0004",
+    "LR0005",
+    "LR0006",
+    "LR0007",
+    "LR0008",
+    "LR0009",
+    "LR0100",
+    "LR0300",
+    "LR0500",
+]
+
+
+MAPPING_OF_NAMES = {
+    'global_horizontal_avg': {'short_name': 'ghi', 'description': 'global horizontal irradiance', 'unit': 'W m-2'},
+    'global_horizontal_std': {'short_name': 'ghi_std', 'description': 'standard deviation of global horizontal irradiance', 'unit': 'W m-2'},
+    'global_horizontal_min': {'short_name': 'ghi_min', 'description': 'minimum global horizontal irradiance', 'unit': 'W m-2'},
+    'global_horizontal_max': {'short_name': 'ghi_max', 'description': 'maximum global horizontal irradiance', 'unit': 'W m-2'},
+    'direct_normal_avg': {'short_name': 'dni', 'description': 'direct normal irradiance', 'unit': 'W m-2'},
+    'direct_normal_std': {'short_name': 'dni_std', 'description': 'standard deviation of direct normal irradiance', 'unit': 'W m-2'},
+    'direct_normal_min': {'short_name': 'dni_min', 'description': 'minimum direct normal irradiance', 'unit': 'W m-2'},
+    'direct_normal_max': {'short_name': 'dni_max', 'description': 'maximum direct normal irradiance', 'unit': 'W m-2'},
+    'diffuse_horizontal_avg': {'short_name': 'dif', 'description': 'diffuse horizontal irradiance', 'unit': 'W m-2'},
+    'diffuse_horizontal_std': {'short_name': 'dif_std', 'description': 'standard deviation of diffuse horizontal irradiance', 'unit': 'W m-2'},
+    'diffuse_horizontal_min': {'short_name': 'dif_min', 'description': 'minimum diffuse horizontal irradiance', 'unit': 'W m-2'},
+    'diffuse_horizontal_max': {'short_name': 'dif_max', 'description': 'maximum diffuse horizontal irradiance', 'unit': 'W m-2'},
+    'downward_longwave_avg': {'short_name': 'lwd', 'description': 'downward longwave irradiance', 'unit': 'W m-2'},
+    'downward_longwave_std': {'short_name': 'lwd_std', 'description': 'standard deviation of downward longwave irradiance', 'unit': 'W m-2'},
+    'downward_longwave_min': {'short_name': 'lwd_min', 'description': 'minimum downward longwave irradiance', 'unit': 'W m-2'},
+    'downward_longwave_max': {'short_name': 'lwd_max', 'description': 'maximum downward longwave irradiance', 'unit': 'W m-2'},
+    'air_temperature': {'short_name': 'temp', 'description': 'air temperature', 'unit': '°C'},
+    'relative_humidity': {'short_name': 'rh', 'description': 'relative humidity', 'unit': '%'},
+    'atmospheric_pressure': {'short_name': 'pres', 'description': 'atmospheric pressure', 'unit': 'hPa'}
+}
 
 
 def get_database_path():
@@ -92,13 +132,11 @@ def load_metadata(update: Literal["auto"] | bool = "auto"):
         return json.load(f)
 
 
-def __parse_bsrn_file__(site, year, month):
+def __parse_bsrn_file__(site, year, month, logical_records = None):
     retrieval = parse_bsrn_file(
-        site=site,
-        year=year,
-        month=month,
+        get_database_path() / "ftp" / site / f"{site}{month:02d}{str(year)[-2:]}.dat.gz",
         check_remote_on_missing_file=True,
-        logical_records=["LR0004", "LR0100"],
+        logical_records=["LR0004", "LR0100"] + (logical_records if logical_records is not None else []),
         timeout=30)
     return retrieval | {"year": year, "month": month}
 
@@ -107,13 +145,25 @@ def load_data(
     site: Site,
     years: Sequence[Year] | Year,
     months: Sequence[Month] | Month = range(1, 13),
-    # center: bool = False,
-    # full_output: bool = False,
-) -> dict | tuple[dict, dict, dict]:
+    filled: bool = True,
+    centered: bool = True,
+    reduced: bool = True,
+    extra_output: list[Literal["LR0300", "LR0500"]] | None = None,
+) -> tuple[SolarDataFrame, pd.DataFrame] | tuple[SolarDataFrame, pd.DataFrame, dict[str, SolarDataFrame]]:
+
+    # TODO: remapear los nombres y seleccionar por defecto solo las mas relevantes
 
     site = validate_type(site, Site)
     years = [validate_type(year, Year) for year in np.asarray(years, dtype=int).reshape(-1)]
     months = [validate_type(month, Month) for month in np.asarray(months, dtype=int).reshape(-1)]
+
+    if extra_output is not None:
+        for lr in extra_output:
+            if lr not in ["LR0300", "LR0500"]:
+                raise ValueError(f"invalid logical record name in extra_output: {lr}. Supported values are 'LR0300' and 'LR0500'.")
+
+    parse_bsrn_file_with_extra_records = functools.partial(__parse_bsrn_file__, logical_records=extra_output)
+
     list_of_years_and_months = sorted(itertools.product(years, months), key=lambda x: (x[0], x[1]))
 
     logger.info(f"loading data for {len(list_of_years_and_months)} BSRN files...")
@@ -121,17 +171,34 @@ def load_data(
     tasks = [(site, year, month) for year, month in list_of_years_and_months]
     with mp.Pool(mp.cpu_count()) as workers:
         # starmap keeps the order of the tasks, so the output is ordered by year and month
-        retrievals = workers.starmap(__parse_bsrn_file__, tasks, chunksize=1)
+        retrievals = workers.starmap(parse_bsrn_file_with_extra_records, tasks, chunksize=1)
 
     # remove empty retrievals (files not found or with no supported logical records)
     if not (retrievals := [retr for retr in retrievals if len(retr) > 0]):
         logger.warning(f"no data retrieved for {site=}, {years=}, and {months=}")
         return
 
+    #===================================================================================
+    # PREPARE THE DATA AND METADATA TO BE RETURNED.
+    #   DATA IS A SOLARDATAFRAME
+    #   METADATA IS A PANDAS DATAFRAME
+    # The metadata included in the data solardataframe, included latitude,
+    # longitude and altitude are gathered from `load_metadata`, which retrieves
+    # them from Pangaea. The metadata included in the metadata dataframe, included
+    # surface type, topography type, horizon azimuth and elevation, are gathered
+    # from the logical record LR0004 of each file. The metadata included in the
+    # data solardataframe is expected to be consistent across all files, while the
+    # metadata included in the metadata dataframe may vary across files (e.g., if
+    # there are changes in the surface type or topography type during the period
+    # of interest).
+    #===================================================================================
+
     def clean_data_retrieval(retrieval: dict, lr: LogicalRecordName) -> pd.DataFrame:
+        if (data := retrieval.get(lr)) is None:
+            return None
+
         year = retrieval.get("year")
         month = retrieval.get("month")
-        data = retrieval.get(lr)
 
         # set a DatetimeIndex with the time information in the logical record
         time_dict = {"year": year, "month": month, "day": data["day"], "hour": data["hour"], "minute": data["minute"]}
@@ -146,33 +213,71 @@ def load_data(
 
     data = pd.concat([clean_data_retrieval(retr, lr="LR0100") for retr in retrievals], axis=0)
 
-    # TODO: hacer denso tambien data?
-    # TODO: metadata
-    # TODO: centrar times?
-    # TODO: repetir para LR0300 y LR0500 si estan presentes en los retrievals
-    # TODO: remapear los nombres y seleccionar por defecto solo las mas relevantes
+    if reduced:
+        must_variables = ["global_horizontal_avg", "direct_normal_avg", "diffuse_horizontal_avg"]
+        data = data[must_variables].rename(columns={var: MAPPING_OF_NAMES[var]["short_name"] if var in MAPPING_OF_NAMES else var
+                                           for var in must_variables})
 
-    return data
+    if extra_output is not None:
+        extra_data = {}
+        for lr in extra_output:
+            this_data = list(filter(None, [clean_data_retrieval(retr, lr=lr) for retr in retrievals]))
+            if not this_data:
+                logger.warning(f"no data retrieved for logical record {lr} in {site=}, {years=}, and {months=}")
+                extra_data[lr] = None
+            else:
+                extra_data[lr] = pd.concat(this_data, axis=0)
 
-    # check_item('latitude')
-    # check_item('longitude')
-    # check_item('location')
-    # check_item('station')
-    # check_item('altitude')
-    # check_item('horizon_azimuth')
-    # check_item('horizon_elevation')
-    # check_item('surface_type')
-    # check_item('topography_type')
-    # check_item('network')
+    if centered:
+        data = data.set_index(data.index + pd.to_timedelta("30s"))
+        if extra_output is not None:
+            for lr, df in extra_data.items():
+                if df is not None:
+                    extra_data[lr] = df.set_index(df.index + pd.to_timedelta("30s"))
 
-    # data['values'] = pd.concat([retr['values'] for retr in retrieval])
+    if filled:
+        dense_times = pd.date_range(data.index.min(), data.index.max(), freq="1min", inclusive="both", tz="UTC")
+        data = data.reindex(dense_times)
+        if extra_output is not None:
+            for lr, df in extra_data.items():
+                if df is not None:
+                    dense_times = pd.date_range(df.index.min(), df.index.max(), freq="1min", inclusive="both", tz="UTC")
+                    extra_data[lr] = df.reindex(dense_times)
 
-    # # guess time series resolution...
-    # data['resolution'] = guess_time_resolution(data['values']).seconds
+    allsite_metadata = load_metadata().get(site)
+    custom_metadata = {key: allsite_metadata[key] for key in allsite_metadata.keys()
+                       if key not in ["latitude", "longitude", "altitude"]}
+    custom_metadata["timestamp_alignment"] = "center" if centered else "start"
 
-    # metadata = copy.deepcopy(data)
-    # data = metadata.pop('values')
-    # return data, metadata  # output port!!
+    data = SolarDataFrame(
+        data,
+        latitude=allsite_metadata["latitude"],
+        longitude=allsite_metadata["longitude"],
+        elevation=allsite_metadata["altitude"],
+        custom_metadata=custom_metadata)
+
+    variables = ("surface_type", "topography_type", "latitude", "longitude",
+                 "altitude", "horizon_azimuth", "horizon_elevation")
+    metadata = [{"year": retr["year"], "month": retr["month"]} |
+                {key: retr["LR0004"][key] for key in variables}
+                for retr in retrievals]
+    metadata = pd.DataFrame.from_records(metadata)
+
+    if metadata["latitude"].nunique() > 1:
+        logger.warning("the retrieved data contains different latitude values "
+                       f"({metadata['latitude'].unique()}). This is not expected.")
+
+    if metadata["longitude"].nunique() > 1:
+        logger.warning("the retrieved data contains different longitude values "
+                       f"({metadata['longitude'].unique()}). This is not expected.")
+
+    if metadata["altitude"].nunique() > 1:
+        logger.warning("the retrieved data contains different altitude values "
+                       f"({metadata['altitude'].unique()}). This is not expected.")
+
+    if extra_output is not None:
+        return data, metadata, extra_data
+    return data, metadata
 
 
 @dataclass
@@ -212,15 +317,11 @@ class LogicalRecord:
     def has_changed(self):
         return self.signature[1] == "C"
 
-    def parse(self):
+    def parse(self, **kwargs) -> dict[str, Any]:
         if self.parser is None:
-            raise ValueError(
-                f"no parser available for logical record with id {self.id}"
-            )
-        logger.debug(
-            f"parsing <blue>{self.name}</blue> with parser <blue>{self.parser.__name__}</blue>"
-        )
-        return self.parser(self.lines)
+            raise ValueError("no parser available for logical record {self.name}")
+        logger.debug(f"parsing <blue>{self.name}</blue> with parser <blue>{self.parser.__name__}</blue>")
+        return self.parser(self.lines, **kwargs)
 
     @classmethod
     def find_in_data(
@@ -245,32 +346,11 @@ class LogicalRecord:
 
 
 def parse_bsrn_file(
-    site: Site,
-    year: Year,
-    month: Month,
+    path: Path,
     check_remote_on_missing_file: bool = True,
     logical_records: LogicalRecordName | list[LogicalRecordName] | None = None,
     timeout: int = 30,
-) -> dict:
-
-    SUPPORTED_LOGICAL_RECORDS = [
-        "LR0001",
-        "LR0002",
-        "LR0003",
-        "LR0004",
-        "LR0005",
-        "LR0006",
-        "LR0007",
-        "LR0008",
-        "LR0009",
-        "LR0100",
-        "LR0300",
-        "LR0500",
-    ]
-
-    site = validate_type(site, Site)
-    year = validate_type(year, Year)
-    month = validate_type(month, Month)
+) -> dict[str, Any]:
 
     if logical_records is not None:
         if isinstance(logical_records, str):
@@ -288,22 +368,19 @@ def parse_bsrn_file(
 
     logger.debug(f"the supported logical records are: {SUPPORTED_LOGICAL_RECORDS}")
 
-    local_path = (
-        get_database_path() / "ftp" / site / f"{site}{month:02d}{str(year)[-2:]}.dat.gz"
-    )
-    if check_remote_on_missing_file and not local_path.exists():
-        local_path = helpers.fetch_site_data_from_ftp(
-            local_path.name, local_path.parent, timeout=timeout
+    if check_remote_on_missing_file and not path.exists():
+        path = helpers.fetch_site_data_from_ftp(
+            path.name, path.parent, timeout=timeout
         )
 
-    if not local_path.exists():
+    if not path.exists():
         logger.error(
-            f"BSRN data file {local_path.name} not found in {local_path.parent}"
+            f"BSRN data file {path.name} not found in {path.parent}"
         )
         return {}
 
-    logger.info(f"reading file <blue>{local_path.name}</blue> (@ {local_path.parent})")
-    with gzip.open(local_path, "rb") as gz:
+    logger.info(f"reading file <blue>{path.name}</blue> (@ {path.parent})")
+    with gzip.open(path, "rb") as gz:
         txt_data = [line.rstrip().decode("utf-8") for line in gz.readlines()]
 
     # find all logical records in the data but keep only the supported ones (if specified)
@@ -327,12 +404,13 @@ def parse_bsrn_file(
     else:
         logical_records_to_be_parsed = []
         for lr in logical_records:
-            if lr in [lr.name for lr in supported_logical_records_in_data]:
+            if lr in [lr_.name for lr_ in supported_logical_records_in_data]:
                 logical_records_to_be_parsed.append(lr)
             else:
-                logger.warning(
-                    f"the logical record {lr} is not supported or is not found in data. Ignoring it."
-                )
+                if lr in SUPPORTED_LOGICAL_RECORDS:
+                    logger.warning(f"the logical record {lr} is not in data. Ignoring it.")
+                else:
+                    logger.warning(f"the logical record {lr} is not supported. Ignoring it.")
         logical_records = [
             lr
             for lr in supported_logical_records_in_data
@@ -344,303 +422,15 @@ def parse_bsrn_file(
     )
 
     contents = {}
-    # allsite_metadata = load_metadata()
 
-    for logical_record in sorted(
-        logical_records, key=lambda lr: lr.name
-    ):  # sort logical records by their name (LRxxxx)
+    for logical_record in sorted(logical_records, key=lambda lr: lr.name):  # sort logical records by their name (LRxxxx)
         if not logical_record.parser:
             logger.warning(
                 f"unavailable parser for logical record with id {logical_record.name}"
             )
             continue
 
-        lr_data = logical_record.parse()
+        lr_data = logical_record.parse(path=path)
         contents[logical_record.name] = lr_data
 
-    return contents
-
-    contents["site"] = site
-    contents["year"] = year
-    contents["month"] = month
-    contents["station"] = allsite_metadata[site]["station"]
-    contents["location"] = allsite_metadata[site]["location"]
-    contents["latitude"] = float(allsite_metadata[site]["latitude"])
-    contents["longitude"] = float(allsite_metadata[site]["longitude"])
-    contents["altitude"] = float(allsite_metadata[site]["altitude"])
-
-    contents["horizon_azimuth"] = np.array(
-        contents["metadata"].get("horizon_azimuth", None)
-    )
-    contents["horizon_elevation"] = np.array(
-        contents["metadata"].get("horizon_elevation", None)
-    )
-    contents["surface_type"] = tables.TableA4.get(
-        contents["metadata"].get("surface_type", None), None
-    )
-    contents["topography_type"] = contents["metadata"].get(
-        "topography_type", contents["metadata"].get("topograpy_type", None)
-    )
-    contents["topography_type"] = tables.TableA5.get(
-        contents["topography_type"], contents["topography_type"]
-    )
-
-    contents["network"] = "BSRN"
-
-    logger.debug(f"Site latitude: {contents['latitude']:+.4f}N")
-    logger.debug(f"Site longitude: {contents['longitude']:+.4f}E")
-    logger.debug(f"Site altitude: {contents['altitude']:+.1f} m.a.s.l.")
-
-    # READ DATA...
-
-    for lr_id in sorted(lr_specs):
-        if lr_id not in parser.data_parser_mapping:
-            logger.warning(
-                f"unsupported data parser for logical record with id {lr_id}: "
-                f"({tables.LogicalRecordDescription.get(lr_id, 'unknown logical record')})"
-            )
-            continue
-
-        lr_desc = lr_specs[lr_id]
-        first_line = lr_desc["first_line"]
-        last_line = lr_desc["last_line"]
-
-        # I add an entry for each logical record (lrid) because
-        # the data for each logical record has independent times
-        lr_parser = parser.data_parser_mapping[lr_id]
-        logger.debug(f"parsing logical record {lr_id} for data")
-        lr_data = lr_parser(txt_data[first_line : last_line + 1])
-
-        # set a DatetimeIndex with the time information in the logical record
-        time_dict = {
-            "year": year,
-            "month": month,
-            "day": lr_data["day"],
-            "hour": lr_data["hour"],
-            "minute": lr_data["minute"],
-        }
-        times_utc = pd.to_datetime(pd.DataFrame(time_dict), utc=True)
-        lr_data = lr_data.set_index(times_utc).drop(columns=["day", "hour", "minute"])
-
-        # add missing timestamps with NaN values, if necessary
-        start = pd.to_datetime(f"{year}-{month:02d}-01")
-        dense_times = pd.date_range(
-            start, start + pd.offsets.MonthBegin(1), freq="1min", inclusive="left"
-        )
-        lr_data = lr_data.reindex(dense_times)
-
-        contents[f"LR{lr_id}"] = lr_data
-
-        # ERROR: CAM, 2008-05 (cam0508.dat.gz)
-        #    there was a problem parsing logical record 0100
-        #    hour greater than 23 at: (day=19, hour=24, minute=0)
-        # It is exactly the same problem (and solution) than
-        # CAM 2013-09 (see below)
-        #
-        # ERROR: CAM, 2008-10 (cam1008.dat.gz)
-        #    there was a problem parsing logical record 0100
-        #    hour greater than 23 at: (day=20, hour=24, minute=0)
-        # It is exactly the same problem (and solution) than
-        # CAM 2013-09 (see below)
-        #
-        # ERROR: CAM, 2009-08 (cam0809.dat.gz)
-        #    there was a problem parsing logical record 0100
-        #    hour greater than 23 at: (day=10, hour=24, minute=0)
-        # It is exactly the same problem (and solution) than
-        # CAM 2013-09 (see below)
-        #
-        # ERROR: CAM, 2009-11 (cam1109.dat.gz)
-        #    there was a problem parsing logical record 0100
-        #    hour greater than 23 at: (day=25, hour=24, minute=0)
-        # It is exactly the same problem (and solution) than
-        # CAM 2013-09 (see below)
-        #
-        # ERROR: CAM, 2013-07 (cam0713.dat.gz)
-        # There are two errors in the time stamps in record C0100
-        # for the 2nd day of the month. First, the 2nd minute is
-        # missing:
-        #   2    0      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    346 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #   2    2      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    351 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        # I simply solve it by inserting a record of missings:
-        #   2    0      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    346 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #   2    1   -999 -99.9 -999 -999   -999 -99.9 -999 -999
-        #            -999 -99.9 -999 -999   -999 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #   2    2      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    351 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        # Second, the 2nd day ends with minute 1440, but the maximum
-        # allowed minute is 1439, and the 3rd day starts with minute
-        # 1, but the first minute should be 0. That is:
-        #   2 1439      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    336 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #   2 1440   -999 -99.9 -999 -999   -999 -99.9 -999 -999
-        #            -999 -99.9 -999 -999   -999 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #   3    1      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    337 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        # I simply solve it moving the record with day=2 and
-        # minute=1440 to day=3 and minute=0. That is:
-        #   2 1439      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    336 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #   3    0   -999 -99.9 -999 -999   -999 -99.9 -999 -999
-        #            -999 -99.9 -999 -999   -999 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #   3    1      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    337 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #
-        # ERROR: CAM, 2013-09 (cam0913.dat.gz)
-        # The 11th day ends with minute 1440, but the maximum
-        # allowed is 1439, and the 12th day starts with minute 1,
-        # but the first minute should be 0. That is:
-        #  11 1439      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    388 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #  11 1440   -999 -99.9 -999 -999   -999 -99.9 -999 -999
-        #            -999 -99.9 -999 -999   -999 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #  12    1      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    388 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        # I simply solve it moving the record with day=11 and
-        # minute=1440 to day=12 and minute=0. That is:
-        #  11 1439      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    388 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #  12    0   -999 -99.9 -999 -999   -999 -99.9 -999 -999
-        #            -999 -99.9 -999 -999   -999 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #  12    1      0 -99.9 -999 -999      0 -99.9 -999 -999
-        #               0 -99.9 -999 -999    388 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        #
-        # ERROR: SMS, 2016-04 (sms0416.dat.gz)
-        # From day 24 all days have an extra record "1440". That is:
-        #  24 1440   -999 -99.9 -999 -999   -999 -99.9 -999 -999
-        #            -999 -99.9 -999 -999   -999 -99.9 -999 -999\
-        #    -99.9 -99.9 -999
-        # I simply removed them from the file
-        #
-        # ERROR: SMS, 2016-05 (sms0516.dat.gz)
-        # As previous error, but for day 1. I simply removed the
-        # record from the file
-        #
-        # ERROR: SMS, 2016-10 (sms1016.dat.gz)
-        # As previous error, but for days 3 and 4. I simply removed
-        # the records from the file
-        #
-        # ERROR: SMS, 2016-11 (sms1116.dat.gz)
-        # As previous error, but for day 9. I simply removed the
-        # record from the file
-        #
-        # and many more...
-
-        # # The logical record 0100 is essential because it holds the
-        # # solar radiation data. Errors parsing it are not allowed!!
-        # if lr_id in ("0100",):
-        #     logger.error("there was a problem parsing logical record 0100")
-        #     if max(hour) > 23:
-        #         msg = "hour greater than 23 at: "
-        #         msg += ", ".join(
-        #             [f"(year={year}, month={month}, day={day[k]}, hour={hour[k]}, minute={minute[k]})"
-        #                 for k in np.argwhere(hour > 23)[0]])
-        #         logger.error(msg)
-        #     raise exc
-        # logger.warning(f"there was a problem parsing logical record {lr_id}. Skipping")
-
-    # for lr_id in sorted(lr_specs):
-    #     if ((lr_id not in parser.metadata_parser_mapping) and (lr_id not in parser.data_parser_mapping)):
-    #         logger.debug(f"missing parser for logical record {lr_id}")
-
-    # from IPython import embed; embed()
-
-    # # get rid of "stats" columns in logical record 0100 and pile up the
-    # # rest in a DataFrame structure
-    # if "0100" in contents["logical_records"]:
-
-    #     logger.debug("parsing data in logical record 0100")
-
-    #     def translate(varname):
-    #         mapping = {
-    #             "global_horizontal": "ghi",
-    #             "direct_normal": "dni",
-    #             "diffuse_horizontal": "dif",
-    #             "downward_longwave": "dlw",
-    #             "air_temperature": "tair",
-    #             "relative_humidity": "rh",
-    #             "atmospheric_pressure": "pressure"
-    #         }
-    #         for long_name, short_name in mapping.items():
-    #             if long_name in varname:
-    #                 return varname.replace(long_name, short_name)
-    #         return varname
-
-    #     series = {}
-    #     times_utc = contents["logical_records"]["0100"]["utc_times"]
-
-    #     for variable in contents["logical_records"]["0100"]:
-    #         if variable.endswith("_min") or variable.endswith("_max"):
-    #             continue
-
-    #         if variable in ("utc_times", "description"):
-    #             continue
-
-    #         var_repr = repr(contents["logical_records"]["0100"][variable])
-    #         logger.debug(f'  - getting variable `{variable}`: {var_repr}')
-    #         series[translate(variable)] = pd.Series(
-    #             data=contents["logical_records"]["0100"][variable],
-    #             index=times_utc)
-
-    #     if not series:
-    #         logger.debug("<red>empty logical record 0100</red>")
-    #         return None
-
-    #     try:
-    #         contents["values"] = pd.concat(series, axis=1)
-    #     except Exception as exc:  # pylint: disable=broad-except
-    #         logger.debug(f"an exception has occurred while retrieving the logical record 0100: {exc}")
-    #         return None
-
-    elapsed_time = time.time() - init_time
-    logger.debug(f"total elapsed time: {elapsed_time} seconds")
-
-    metadata = contents.pop("metadata")
-    logical_records = contents.pop("logical_records")
-
-    #####################################################################
-    # THE TIMESTAMP OF THE DATAPOINT REPRESENTS THE STARTING POINT OF   #
-    # THE 1-MIN AVERAGE (page 1493, Driemel et al., 2018,               #
-    # doi: www.earth-syst-sci-data.net/10/1491/2018/                    #
-    #####################################################################
-    contents["timestamp_reference"] = "start"
-
-    if center is True:
-        contents["values"].index = contents["values"].index + pd.Timedelta(
-            30, "seconds"
-        )
-
-        # interpolation to be sure that the time grid is dense
-        t_s = contents["values"].index[0]
-        t_e = contents["values"].index[-1]
-        times_1min = pd.date_range(
-            f"{t_s.year}-{t_s.month:02d}-01T00:00:30",
-            f"{t_e.year}-{t_e.month:02d}-{t_e.daysinmonth}T23:59:30",
-            freq=pd.Timedelta(60, "seconds"),
-        )
-        contents["values"] = time_interpolation(contents["values"], times_1min)
-
-        contents["timestamp_reference"] = "center"
-
-    if full_output is True:
-        return contents, metadata, logical_records
     return contents
