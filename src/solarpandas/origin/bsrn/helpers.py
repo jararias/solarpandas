@@ -1,8 +1,11 @@
 
+import re
 import ftplib
 import json
-from netrc import netrc
+from datetime import datetime, timezone
+import numpy as np
 from pathlib import Path
+from netrc import netrc
 
 import pandas as pd
 from loguru import logger
@@ -12,6 +15,14 @@ from .types import Site, validate_type
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
+
+
+def get_file_age(path: Path):
+    if not path.exists():
+        return np.inf
+    datetime_created = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    file_age = datetime.now(timezone.utc) - datetime_created
+    return file_age.total_seconds() / (24 * 3600)  # seconds to days
 
 
 def fetch_site_data_from_ftp(
@@ -105,3 +116,42 @@ def fetch_allsite_metadata_from_pangaea():
     records = json.loads(table.to_json(orient="records"))
     return {record["acronym"]: {key: value for key, value in record.items() if key != "acronym"}
             for record in records}
+
+
+def inspect_data_availability(
+    user: str | None = None,
+    password: str | None = None,
+    timeout: int | None = 30,
+) -> dict[str, list[str]]:
+
+    if (server := get_option("bsrn.server", None)) is None:
+        raise ValueError("BSRN server not specified in config file")
+
+    if user is None or password is None:
+        logger.debug("User or password not provided. Using credentials from netrc file")
+        if (retrieval := netrc().authenticators(server)) is None:
+            raise ValueError(f"credentials for server `{server}` not found in netrc file")
+        user = user or retrieval[0]
+        password = password or retrieval[2]
+
+    try:
+        # open the FTP connection and log in with the provided credentials
+        with ftplib.FTP(server, timeout=timeout) as ftp:
+            ftp.login(user, password)
+
+            sites = {}
+            for site in sorted(filter(lambda x: len(x) == 3, ftp.nlst())):
+                regex = re.compile(r"^{0}/{0}\d{{4}}\.dat\.gz$".format(site))
+                files = sorted(list(filter(regex.match, ftp.nlst(site))))
+                logger.info(f"<blue>{site=}</blue>: {len(files)} files available")
+                sites[site] = files
+
+    except ftplib.all_errors as exc:
+        # catch login, connection, and other FTP-related errors
+        raise ValueError(f"loging error: {exc.args[0]}") from exc
+
+    except OSError as exc:
+        # catch network-related errors (e.g., DNS failure, refused connection)
+        raise ValueError(f"network error: {exc.strerror}") from exc
+
+    return sites
