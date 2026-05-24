@@ -1,10 +1,9 @@
-
 import copy
 import json
 import linecache
 from numbers import Number
-from typing import Self, Sequence
 from pathlib import Path
+from typing import Self, Sequence
 
 import numpy as np
 import pandas as pd
@@ -36,6 +35,7 @@ class SolarSeries(pd.Series):
             kwargs["elevation"] = self._elevation
             kwargs["custom_metadata"] = self._custom_metadata
             return SolarSeries(*args, **kwargs)
+
         return inner
 
     @property
@@ -46,6 +46,7 @@ class SolarSeries(pd.Series):
             kwargs["elevation"] = self._elevation
             kwargs["custom_metadata"] = self._custom_metadata
             return SolarDataFrame(*args, **kwargs)
+
         return inner
 
     def __init__(
@@ -53,7 +54,7 @@ class SolarSeries(pd.Series):
         *args,
         latitude: Latitude,
         longitude: Longitude,
-        elevation: Elevation = 0.,
+        elevation: Elevation = 0.0,
         custom_metadata: dict | None = None,
         **kwargs,
     ):
@@ -85,13 +86,22 @@ class SolarSeries(pd.Series):
     def custom_metadata(self):
         return self._custom_metadata
 
-    def clone(self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number) -> Self:
-        return self.__class__(
-            data=np.full((len(self),), other) if isinstance(other, Number) else copy.copy(other),
-            latitude=self.latitude,
-            longitude=self.longitude,
-            elevation=self.elevation,
-            custom_metadata=copy.deepcopy(self.custom_metadata))
+    def clone(
+        self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
+    ) -> Self:
+        kwargs = {
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "elevation": self.elevation,
+            "custom_metadata": copy.deepcopy(self.custom_metadata),
+        }
+        if isinstance(other, Number):
+            return self.__class__(
+                data=np.full((len(self),), other), index=self.index, **kwargs
+            )
+        if isinstance(other, (np.ndarray, list)):
+            return self.__class__(data=copy.copy(other), index=self.index, **kwargs)
+        return self.__class__(data=copy.copy(other), **kwargs)
 
     # def iplot(self, *args, time_ref: str = "lst", **kwargs):
     #     from .viz_helpers import on_key_pressed_daily_step, onscroll_daily_step
@@ -149,14 +159,20 @@ class SolarSeries(pd.Series):
     #     return artist
 
     def __repr__(self):
-        epilogue = "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        return (super().__repr__().removesuffix(epilogue)
-                + epilogue.format(self.latitude, self.longitude, self.elevation))
+        epilogue = (
+            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
+        )
+        return super().__repr__().removesuffix(epilogue) + epilogue.format(
+            self.latitude, self.longitude, self.elevation
+        )
 
     def __str__(self):
-        epilogue = "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        return (super().__str__().removesuffix(epilogue)
-                + epilogue.format(self.latitude, self.longitude, self.elevation))
+        epilogue = (
+            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
+        )
+        return super().__str__().removesuffix(epilogue) + epilogue.format(
+            self.latitude, self.longitude, self.elevation
+        )
 
 
 class SolarDataFrame(pd.DataFrame):
@@ -189,7 +205,7 @@ class SolarDataFrame(pd.DataFrame):
         *args,
         latitude: Latitude,
         longitude: Longitude,
-        elevation: Elevation = 0.,
+        elevation: Elevation = 0.0,
         custom_metadata: dict | None = None,
         **kwargs,
     ):
@@ -227,23 +243,38 @@ class SolarDataFrame(pd.DataFrame):
     def describe(self):
         return self.as_pandas().describe()
 
-    def clone(self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number) -> Self:
-        return self.__class__(
-            data=np.full((len(self),), other) if isinstance(other, Number) else copy.copy(other),
-            latitude=self.latitude,
-            longitude=self.longitude,
-            elevation=self.elevation,
-            custom_metadata=copy.deepcopy(self.custom_metadata))
+    def clone(
+        self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
+    ) -> Self:
+        kwargs = {
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "elevation": self.elevation,
+            "custom_metadata": copy.deepcopy(self.custom_metadata),
+        }
+        if isinstance(other, Number):
+            return self.__class__(
+                data=np.full((len(self),), other), index=self.index, **kwargs
+            )
+        if isinstance(other, (np.ndarray, list)):
+            return self.__class__(data=copy.copy(other), index=self.index, **kwargs)
+        return self.__class__(data=copy.copy(other), **kwargs)
 
     def __repr__(self):
-        epilogue = "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        return (super().__repr__().removesuffix(epilogue)
-                + epilogue.format(self.latitude, self.longitude, self.elevation))
+        epilogue = (
+            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
+        )
+        return super().__repr__().removesuffix(epilogue) + epilogue.format(
+            self.latitude, self.longitude, self.elevation
+        )
 
     def __str__(self):
-        epilogue = "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        return (super().__repr__().removesuffix(epilogue)
-                + epilogue.format(self.latitude, self.longitude, self.elevation))
+        epilogue = (
+            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
+        )
+        return super().__repr__().removesuffix(epilogue) + epilogue.format(
+            self.latitude, self.longitude, self.elevation
+        )
 
     def to_csv(self, path: str | Path, **kwargs):
         metadata = {
@@ -264,7 +295,7 @@ class SolarDataFrame(pd.DataFrame):
         metadata = {
             "latitude": self.latitude,
             "longitude": self.longitude,
-            "elevation": self.elevation
+            "elevation": self.elevation,
         } | self.custom_metadata
 
         # convert the dataframe to a Arrow Table
@@ -334,5 +365,5 @@ class SolarDataFrame(pd.DataFrame):
             latitude=float(metadata.pop("latitude")),
             longitude=float(metadata.pop("longitude")),
             elevation=float(metadata.pop("elevation")),
-            custom_metadata=metadata
+            custom_metadata=metadata,
         )

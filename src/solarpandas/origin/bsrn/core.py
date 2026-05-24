@@ -7,7 +7,7 @@ import multiprocessing as mp
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence, overload
 
 import numpy as np
 import pandas as pd
@@ -141,6 +141,8 @@ def __parse_bsrn_file__(site, year, month, logical_records = None):
     return retrieval | {"year": year, "month": month}
 
 
+# CASE 1: only data
+@overload
 def load_data(
     site: Site,
     years: Sequence[Year] | Year,
@@ -148,10 +150,63 @@ def load_data(
     filled: bool = True,
     centered: bool = True,
     reduced: bool = True,
-    extra_output: list[Literal["LR0300", "LR0500"]] | None = None,
-) -> tuple[SolarDataFrame, pd.DataFrame] | tuple[SolarDataFrame, pd.DataFrame, dict[str, SolarDataFrame]]:
+    include_metadata: Literal[False] = False,
+    extra_output: None = None,
+) -> None | SolarDataFrame: ...
 
-    # TODO: remapear los nombres y seleccionar por defecto solo las mas relevantes
+
+# CASE 2: data and metadata
+@overload
+def load_data(
+    site: Site,
+    years: Sequence[Year] | Year,
+    months: Sequence[Month] | Month = range(1, 13),
+    filled: bool = True,
+    centered: bool = True,
+    reduced: bool = True,
+    include_metadata: Literal[True] = True,
+    extra_output: None = None,
+) -> None |tuple[SolarDataFrame, pd.DataFrame]: ...
+
+
+# CASE 3: data and extra data
+@overload
+def load_data(
+    site: Site,
+    years: Sequence[Year] | Year,
+    months: Sequence[Month] | Month = range(1, 13),
+    filled: bool = True,
+    centered: bool = True,
+    reduced: bool = True,
+    include_metadata: Literal[False] = False,
+    extra_output: list[Literal["LR0300", "LR0500"]] = ...,
+) -> None | tuple[SolarDataFrame, dict[str, SolarDataFrame]]: ...
+
+
+# CASE 4: data, metadata and extra data
+@overload
+def load_data(
+    site: Site,
+    years: Sequence[Year] | Year,
+    months: Sequence[Month] | Month = range(1, 13),
+    filled: bool = True,
+    centered: bool = True,
+    reduced: bool = True,
+    include_metadata: Literal[True] = True,
+    extra_output: list[Literal["LR0300", "LR0500"]] = ...,
+) -> None | tuple[SolarDataFrame, pd.DataFrame, dict[str, SolarDataFrame]]: ...
+
+
+def load_data(
+    site: Site,
+    years: Sequence[Year] | Year,
+    months: Sequence[Month] | Month = range(1, 13),
+    filled: bool = True,
+    centered: bool = True,
+    reduced: bool = True,
+    include_metadata: bool = False,
+    extra_output: list[Literal["LR0300", "LR0500"]] | None = None,
+):
 
     site = validate_type(site, Site)
     years = [validate_type(year, Year) for year in np.asarray(years, dtype=int).reshape(-1)]
@@ -176,7 +231,7 @@ def load_data(
     # remove empty retrievals (files not found or with no supported logical records)
     if not (retrievals := [retr for retr in retrievals if len(retr) > 0]):
         logger.warning(f"no data retrieved for {site=}, {years=}, and {months=}")
-        return
+        return None
 
     #===================================================================================
     # PREPARE THE DATA AND METADATA TO BE RETURNED.
@@ -275,9 +330,14 @@ def load_data(
         logger.warning("the retrieved data contains different altitude values "
                        f"({metadata['altitude'].unique()}). This is not expected.")
 
-    if extra_output is not None:
-        return data, metadata, extra_data
-    return data, metadata
+    if not include_metadata:
+        if extra_output is None:
+            return data  # overload case 1
+        return data, extra_data  # overload case 3
+
+    if extra_output is None:
+        return data, metadata  # overload case 2
+    return data, metadata, extra_data  # overload case 4
 
 
 @dataclass
