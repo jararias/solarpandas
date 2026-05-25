@@ -3,7 +3,10 @@
 Source: ...
 """
 
+import colorcet as cc
+import datashader as ds
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from loguru import logger
 
@@ -42,22 +45,38 @@ def test_ghi(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
     return test_result
 
 
-def plot_test_ghi(sdf: SolarDataFrame, flag: SolarSeries) -> plt.Axes:
+def plot_test_ghi(sdf: SolarDataFrame, flag: SolarSeries, **kwargs) -> plt.Axes:
     """Plot the GHI test limits and results for visual inspection."""
 
-    ghi = sdf["ghi"]
     eth = sdf.solpos.eth
     cosz = sdf.solpos.cosz
     min_value = -4.0  # W m-2, to allow for measurement noise when the sun is just below the horizon
     max_value = 100 + 1.50 * eth * (cosz**0.2)  # W m-2, empirical upper limit
 
-    zenith = sdf.solpos.zenith
-    plt.figure(figsize=(10, 8), layout="constrained")
-    plt.scatter(zenith, ghi, label="GHI", color="C0", s=1)
-    plt.scatter(zenith, np.full(len(ghi), min_value), label="Min Limit", color="C1", s=1)
-    plt.scatter(zenith, max_value, label="Max Limit", color="C2", s=1)
-    plt.scatter(zenith[flag.fails], ghi[flag.fails], label="Failed Points", color="red", s=5)
-    plt.scatter(zenith[flag.not_verifiable], ghi[flag.not_verifiable], label="Not Verifiable Points", color="gray", s=5)
+    mpl.rcParams["axes.titlesize"] = 14
+    mpl.rcParams["axes.labelsize"] = 12
+    mpl.rcParams["xtick.labelsize"] = 12
+    mpl.rcParams["ytick.labelsize"] = 12
+    mpl.rcParams["legend.fontsize"] = 11
+
+    ax = kwargs.pop("ax", None)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(12, 8), layout="constrained")
+    ax_box = ax.get_window_extent()
+
+    df = (sdf.assign(zenith=sdf.solpos.zenith, min_value=min_value, max_value=max_value, flag=flag)
+          .pipe(lambda df: df.loc[df.zenith < 89]))
+
+    cvs = ds.Canvas(plot_width=int(ax_box.width), plot_height=int(ax_box.height),
+                    x_range=(df.zenith.min(), df.zenith.max()), y_range=(-10, df.ghi.max()))
+
+    colors = iter(cc.glasbey_hv)
+    agg = cvs.points(df, "zenith", "ghi", ds.count()).pipe(lambda xa: xa.where(xa > 0))
+    mesh = ax.pcolormesh(agg.zenith, agg.ghi, agg.values, cmap="viridis", norm=plt.cm.colors.LogNorm())
+    plt.colorbar(mesh, ax=ax, label="GHI Density (log scale)")
+    plt.scatter("zenith", "max_value", data=df, label="Max Limit", color=next(colors), s=1)
+    plt.scatter("zenith", "min_value", data=df, label="Min Limit", color=next(colors), s=1)
+    plt.scatter("zenith", "ghi", data=df.loc[flag.fails], label="Failed Points", color="red", s=5)
     plt.xlabel("Solar Zenith Angle (deg)")
     plt.ylabel("GHI (W m-2)")
     plt.title("GHI PPL Test Results")
