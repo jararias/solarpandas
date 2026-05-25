@@ -13,3 +13,8 @@ from .clearsky import (
     clear_clearsky_cache,
     get_clearsky_cache_info,
 )
+from .qcontrol import (
+    QualityControlAccessor,
+    clear_qc_cache,
+    get_qc_cache_info,
+)

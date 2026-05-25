@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from enum import IntEnum
 
 import numpy as np
@@ -12,7 +13,9 @@ from pandas.api.extensions import (
     register_series_accessor,
 )
 
-from ..base import SolarSeries
+from . import qcrad
+from .helpers import QCTest
+from ..base import SolarDataFrame, SolarSeries
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
@@ -34,26 +37,25 @@ _NA_SENTINEL = np.iinfo(np.int8).min  # -128, used as NA
 
 
 @register_extension_dtype
-class FlagDtype(ExtensionDtype):
+class QCFlagDtype(ExtensionDtype):
     """Dtype for QC flag arrays.
 
     Valid values: -1 (fail), 0 (not verifiable), 1 (passed).
     NA is represented internally as -128.
     """
 
-    name = "QCflag"
+    name = "qcflag"
     type = np.int8
     na_value = pd.NA
 
     @classmethod
-    def construct_array_type(cls) -> type[FlagArray]:
-        return FlagArray
+    def construct_array_type(cls) -> type[QCFlagArray]:
+        return QCFlagArray
 
     def __repr__(self) -> str:
-        return "FlagDtype()"
+        return "QCFlagDtype()"
 
-
-class FlagArray(ExtensionArray):
+class QCFlagArray(ExtensionArray):
     """ExtensionArray for QC flag values: -1, 0, 1 (or NA).
 
     Internally stored as int8 with -128 as a sentinel for NA.
@@ -68,7 +70,7 @@ class FlagArray(ExtensionArray):
         True where the flag value is 0.
     """
 
-    dtype = FlagDtype()
+    dtype = QCFlagDtype()
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -83,6 +85,9 @@ class FlagArray(ExtensionArray):
         """
         if not isinstance(values, np.ndarray) or values.dtype != np.int8:
             raise TypeError("values must be a np.ndarray of dtype int8")
+        na_mask = pd.isna(values)
+        if (invalid := ~na_mask & ~np.isin(values, _VALID_VALUES)).any():
+            raise ValueError(f"values must be -1, 0, 1 or NA; got {np.unique(values[invalid])}")
         self._data = values.copy() if copy else values
 
     @classmethod
@@ -92,10 +97,11 @@ class FlagArray(ExtensionArray):
         *,
         dtype=None,
         copy: bool = False,
-    ) -> FlagArray:
+    ) -> QCFlagArray:
         """Construct from a sequence of scalars (-1, 0, 1 or NA/None/np.nan)."""
-        if dtype is not None and not isinstance(dtype, FlagDtype):
-            raise TypeError(f"Cannot construct FlagArray with dtype {dtype!r}")
+
+        if dtype is not None and not isinstance(dtype, QCFlagDtype):
+            raise TypeError(f"Cannot construct QCFlagArray with dtype {dtype!r}")
 
         obj = np.asarray(scalars, dtype=object)
         na_mask = pd.isna(obj)  # handles None, np.nan and pd.NA vectorially
@@ -106,7 +112,8 @@ class FlagArray(ExtensionArray):
             invalid = ~na_mask & ~np.isin(raw, _VALID_VALUES)
             if invalid.any():
                 bad = np.unique(raw[invalid]).tolist()
-                raise ValueError(f"FlagArray only accepts -1, 0 or 1; got {bad}")
+                logger.warning(f"QCFlagArray only accepts -1, 0 or 1; got {bad}. Set them to NA instead.")
+                raw[invalid] = _NA_SENTINEL
 
         return cls(raw, copy=copy)
 
@@ -117,13 +124,13 @@ class FlagArray(ExtensionArray):
         *,
         dtype=None,
         copy: bool = False,
-    ) -> FlagArray:
+    ) -> QCFlagArray:
         return cls._from_sequence(
             [int(s) if s not in ("", "NA", "<NA>", "nan") else pd.NA for s in strings]
         )
 
     @classmethod
-    def _from_factorized(cls, values: np.ndarray, original: FlagArray) -> FlagArray:
+    def _from_factorized(cls, values: np.ndarray, original: QCFlagArray) -> QCFlagArray:
         return cls._from_sequence(values)
 
     # ------------------------------------------------------------------
@@ -134,7 +141,7 @@ class FlagArray(ExtensionArray):
         result = self._data[key]
         if np.ndim(result) == 0:
             # scalar extraction
-            v = int(result)
+            v = np.int8(result)
             return pd.NA if v == _NA_SENTINEL else v
         return type(self)(result)
 
@@ -154,7 +161,7 @@ class FlagArray(ExtensionArray):
         return len(self._data)
 
     def __eq__(self, other):
-        if isinstance(other, FlagArray):
+        if isinstance(other, QCFlagArray):
             return self._data == other._data
         return self._data == np.int8(other)
 
@@ -167,7 +174,7 @@ class FlagArray(ExtensionArray):
         *,
         allow_fill: bool = False,
         fill_value=None,
-    ) -> FlagArray:
+    ) -> QCFlagArray:
         from pandas.core.algorithms import take
 
         if allow_fill:
@@ -178,11 +185,11 @@ class FlagArray(ExtensionArray):
         result = take(self._data, indices, allow_fill=allow_fill, fill_value=fill)
         return type(self)(result)
 
-    def copy(self) -> FlagArray:
+    def copy(self) -> QCFlagArray:
         return type(self)(self._data.copy())
 
     @classmethod
-    def _concat_same_type(cls, to_concat) -> FlagArray:
+    def _concat_same_type(cls, to_concat) -> QCFlagArray:
         return cls(np.concatenate([arr._data for arr in to_concat]))
 
     # ------------------------------------------------------------------
@@ -226,8 +233,8 @@ class FlagArray(ExtensionArray):
 
 
 @register_series_accessor("flag")
-class FlagAccessor:
-    """Accessor for Series with QCflag dtype.
+class QCFlagAccessor:
+    """Accessor for Series with QCFlagDtype dtype.
 
     Usage
     -----
@@ -237,9 +244,9 @@ class FlagAccessor:
     """
 
     def __init__(self, series: pd.Series | SolarSeries) -> None:
-        if not isinstance(series.dtype, FlagDtype):
+        if not isinstance(series.dtype, QCFlagDtype):
             raise AttributeError(
-                "The .flag accessor is only available for Series with dtype 'QCflag'."
+                "The .flag accessor is only available for Series with dtype 'QCFlagDtype'."
             )
         self._series = series
 
@@ -283,3 +290,19 @@ class FlagAccessor:
         counts = self.counts(skip_nighttime=skip_nighttime, normalize=True)
         defaults = {"labels": counts.index, "autopct": "%1.1f%%", "startangle": 90}
         counts.plot.pie(**(defaults | kwargs))
+
+    def testplot(self, sdf: SolarDataFrame, **kwargs) -> None:
+        """Plot the original data colored by flag values for visual inspection."""
+        if not isinstance(self._series, SolarSeries):
+            logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
+            return
+
+        for _, obj in inspect.getmembers(qcrad, predicate=lambda obj: isinstance(obj, QCTest)):
+            if obj.name == self._series.name:
+                plot_func = obj._plot_func
+                break
+        else:
+            logger.warning(f"No QCTest found for series '{self._series.name}'. Cannot plot.")
+            return
+
+        return plot_func(sdf, self) # self._series.array._data)

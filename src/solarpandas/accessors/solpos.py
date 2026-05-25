@@ -1,6 +1,7 @@
 
 from functools import lru_cache
 
+import numpy as np
 import pandas as pd
 import sunwhere
 from loguru import logger
@@ -14,7 +15,7 @@ logger = logger.opt(colors=True)
 
 @lru_cache(maxsize=None)
 def _compute_cached_solpos(
-    index: tuple,
+    times: bytes,
     latitude: float,
     longitude: float,
     algorithm: str,
@@ -24,6 +25,7 @@ def _compute_cached_solpos(
     """Compute cached solar position."""
     logger.debug(f"evaluating solar position with `{algorithm}` algorithm, "
                  f"refraction={refraction}, engine=`{engine}`...")
+    index = pd.to_datetime(np.frombuffer(times, dtype="datetime64[ns]"), utc=True)
     args = (pd.DatetimeIndex(index), latitude, longitude)
     kwargs = {"algorithm": algorithm, "refraction": refraction, "engine": engine}
     return sunwhere.sites(*args, **kwargs)
@@ -110,14 +112,36 @@ class SolarPositionAccessor:
         return sunwhere.sites(*args, **kwargs)
 
     def _get_cached_solpos(self, attr_name: str, as_solarseries: bool = True):
+        logger.debug(f"accessing cached solar position attribute `{attr_name}`...")
+
+        # N.B. IMPORTANT!!!!
+        # To use lru_cache we need to use only hashable arguments to the cached functions.
+        # Pandas dataframes and DatetimeIndex objects are not hashable (because they are
+        # mutable), and we need to find some way around this.
+        # My initial approach was to convert the pandas dataframe DatetimeIndex to a tuple,
+        # to make it inmutable, thus hashable. However, this turned to be extremely slow:
+        # computing the solar position of one year of minutely data takes ~3 seconds and
+        # retrieving the cached calculation took ~2.5 seconds. That is terrible. Most of
+        # that time was used to make the DatetimeIndex > tuple > DatetimeIndex conversion.
+        # The new approach is to convert the DatetimeIndex to a numpy array of datetime64[ns],
+        # and then to bytes, which are directly hashable. This is much faster the making the
+        # tuple and still allows retrieving the original times. Now, computing the solar
+        # position of one year of minutely data takes ~0.5 seconds, and retrieving a cached
+        # result is a matter of only ~0.03 seconds. That is a huge improvement.
+
+        # the numpy datetime64[ns] type does not have timezone information, so we need to
+        # convert the times to UTC before converting to bytes
+        time_ary_bytes = np.array(self._sdf.index.tz_convert("UTC"), dtype="datetime64[ns]").tobytes()
+
         solpos = _compute_cached_solpos(
-            tuple(self._sdf.index),
+            time_ary_bytes,
             self._sdf.latitude,
             self._sdf.longitude,
             algorithm=self._algorithm,
             refraction=self._refraction,
             engine=self._engine)
 
+        logger.debug(f"retrieved cached solar position. Extracting `{attr_name}`...")
         if callable(data := getattr(solpos, attr_name)):
             data = data()
 
@@ -128,6 +152,7 @@ class SolarPositionAccessor:
         if not as_solarseries:
             return data
 
+        logger.debug(f"constructing SolarSeries for `{attr_name}`...")
         return SolarSeries(
             data,
             index=self._sdf.index,
@@ -145,6 +170,10 @@ class SolarPositionAccessor:
         return self._get_cached_solpos("zenith")
 
     @property
+    def elevation(self):
+        return 90. - self.zenith
+
+    @property
     def azimuth(self):
         return self._get_cached_solpos("azimuth")
 
@@ -155,6 +184,10 @@ class SolarPositionAccessor:
     @property
     def eth(self):
         return self._get_cached_solpos("eth")
+
+    @property
+    def etn(self):
+        return (self.eth / self.cosz).where(self.cosz > 1e-6, 0.0)
 
     @property
     def ecf(self):

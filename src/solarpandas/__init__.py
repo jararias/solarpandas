@@ -8,13 +8,14 @@ from .accessors import (
     SolarPositionAccessor,
     get_solpos_cache_info,
     clear_solpos_cache,
-)
-from .accessors import (
     ClearskyIrradianceAccessor,
     LTAIrradianceAccessor,
     CDAIrradianceAccessor,
     clear_clearsky_cache,
     get_clearsky_cache_info,
+    QualityControlAccessor,
+    clear_qc_cache,
+    get_qc_cache_info,
 )
 from .base import SolarSeries, SolarDataFrame, read_csv, read_parquet 
 from .logtools import enable_logger

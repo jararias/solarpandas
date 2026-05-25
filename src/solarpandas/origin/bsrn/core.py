@@ -14,7 +14,7 @@ import pandas as pd
 import platformdirs
 from loguru import logger
 
-from ...base import SolarDataFrame
+from ...base import SolarDataFrame, read_parquet
 from ...config import get_option
 from . import helpers, lr_parsers
 from .types import LogicalRecordName, Month, Site, Year, validate_type
@@ -132,92 +132,121 @@ def load_metadata(update: Literal["auto"] | bool = "auto"):
         return json.load(f)
 
 
+def load_data(site: Site, years: Sequence[Year] | Year) -> SolarDataFrame:
+    """Load BSRN data from a local cache of previously retrieved data files with
+       basic (canonical) parameters and time filled and centered."""
+
+    site = validate_type(site, Site)
+    years = [validate_type(year, Year) for year in np.asarray(years, dtype=int).reshape(-1)]
+
+    db_path = get_database_path() / "cached" / site
+    db_path.mkdir(parents=True, exist_ok=True)
+
+    paths = []
+    kwargs = {"months": range(1, 13), "filled": True, "centered": True, "canonical": True,
+              "include_metadata": False, "extra_records": None}
+    for year in years:
+        if not (file_path := db_path / f"{site}_{year}.parquet").exists():
+            logger.info(f"cached file {file_path.name} not found. Loading data from BSRN files...")
+            (
+                load_data_from_bsrn_files(site=site, years=year, **kwargs)
+                .rename_axis("times_utc", axis=0)
+                .reset_index()
+                .to_parquet(file_path)
+            )
+        paths.append(file_path)
+
+    return pd.concat([read_parquet(path) for path in sorted(paths)], axis=0).set_index("times_utc")
+
+
 def __parse_bsrn_file__(site, year, month, logical_records = None):
+    set_of_lr = set(["LR0004", "LR0100"] + (logical_records if logical_records is not None else []))
     retrieval = parse_bsrn_file(
         get_database_path() / "ftp" / site / f"{site}{month:02d}{str(year)[-2:]}.dat.gz",
         check_remote_on_missing_file=True,
-        logical_records=["LR0004", "LR0100"] + (logical_records if logical_records is not None else []),
+        logical_records=list(set_of_lr),
         timeout=30)
     return retrieval | {"year": year, "month": month}
 
 
 # CASE 1: only data
 @overload
-def load_data(
+def load_data_from_bsrn_files(
     site: Site,
     years: Sequence[Year] | Year,
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    reduced: bool = True,
+    canonical: bool = True,
     include_metadata: Literal[False] = False,
-    extra_output: None = None,
+    extra_records: None = None,
 ) -> None | SolarDataFrame: ...
 
 
 # CASE 2: data and metadata
 @overload
-def load_data(
+def load_data_from_bsrn_files(
     site: Site,
     years: Sequence[Year] | Year,
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    reduced: bool = True,
+    canonical: bool = True,
     include_metadata: Literal[True] = True,
-    extra_output: None = None,
+    extra_records: None = None,
 ) -> None |tuple[SolarDataFrame, pd.DataFrame]: ...
 
 
 # CASE 3: data and extra data
 @overload
-def load_data(
+def load_data_from_bsrn_files(
     site: Site,
     years: Sequence[Year] | Year,
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    reduced: bool = True,
+    canonical: bool = True,
     include_metadata: Literal[False] = False,
-    extra_output: list[Literal["LR0300", "LR0500"]] = ...,
+    extra_records: list[Literal["LR0300", "LR0500"]] = ...,
 ) -> None | tuple[SolarDataFrame, dict[str, SolarDataFrame]]: ...
 
 
 # CASE 4: data, metadata and extra data
 @overload
-def load_data(
+def load_data_from_bsrn_files(
     site: Site,
     years: Sequence[Year] | Year,
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    reduced: bool = True,
+    canonical: bool = True,
     include_metadata: Literal[True] = True,
-    extra_output: list[Literal["LR0300", "LR0500"]] = ...,
+    extra_records: list[Literal["LR0300", "LR0500"]] = ...,
 ) -> None | tuple[SolarDataFrame, pd.DataFrame, dict[str, SolarDataFrame]]: ...
 
 
-def load_data(
+def load_data_from_bsrn_files(
     site: Site,
     years: Sequence[Year] | Year,
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    reduced: bool = True,
+    canonical: bool = True,
     include_metadata: bool = False,
-    extra_output: list[Literal["LR0300", "LR0500"]] | None = None,
+    extra_records: list[Literal["LR0300", "LR0500"]] | None = None,
 ):
 
     site = validate_type(site, Site)
     years = [validate_type(year, Year) for year in np.asarray(years, dtype=int).reshape(-1)]
     months = [validate_type(month, Month) for month in np.asarray(months, dtype=int).reshape(-1)]
 
-    if extra_output is not None:
-        for lr in extra_output:
+    if extra_records is not None:
+        for lr in extra_records:
             if lr not in ["LR0300", "LR0500"]:
-                raise ValueError(f"invalid logical record name in extra_output: {lr}. Supported values are 'LR0300' and 'LR0500'.")
+                raise ValueError(f"invalid logical record name in extra_records: {lr}. "
+                                 "Supported values are 'LR0300' and 'LR0500'.")
 
-    parse_bsrn_file_with_extra_records = functools.partial(__parse_bsrn_file__, logical_records=extra_output)
+    parse_bsrn_file_with_extra_records = functools.partial(__parse_bsrn_file__, logical_records=extra_records)
 
     list_of_years_and_months = sorted(itertools.product(years, months), key=lambda x: (x[0], x[1]))
 
@@ -268,14 +297,14 @@ def load_data(
 
     data = pd.concat([clean_data_retrieval(retr, lr="LR0100") for retr in retrievals], axis=0)
 
-    if reduced:
+    if canonical:
         must_variables = ["global_horizontal_avg", "direct_normal_avg", "diffuse_horizontal_avg"]
         data = data[must_variables].rename(columns={var: MAPPING_OF_NAMES[var]["short_name"] if var in MAPPING_OF_NAMES else var
                                            for var in must_variables})
 
-    if extra_output is not None:
+    if extra_records is not None:
         extra_data = {}
-        for lr in extra_output:
+        for lr in extra_records:
             this_data = list(filter(None, [clean_data_retrieval(retr, lr=lr) for retr in retrievals]))
             if not this_data:
                 logger.warning(f"no data retrieved for logical record {lr} in {site=}, {years=}, and {months=}")
@@ -285,7 +314,7 @@ def load_data(
 
     if centered:
         data = data.set_index(data.index + pd.to_timedelta("30s"))
-        if extra_output is not None:
+        if extra_records is not None:
             for lr, df in extra_data.items():
                 if df is not None:
                     extra_data[lr] = df.set_index(df.index + pd.to_timedelta("30s"))
@@ -293,7 +322,7 @@ def load_data(
     if filled:
         dense_times = pd.date_range(data.index.min(), data.index.max(), freq="1min", inclusive="both", tz="UTC")
         data = data.reindex(dense_times)
-        if extra_output is not None:
+        if extra_records is not None:
             for lr, df in extra_data.items():
                 if df is not None:
                     dense_times = pd.date_range(df.index.min(), df.index.max(), freq="1min", inclusive="both", tz="UTC")
@@ -331,11 +360,11 @@ def load_data(
                        f"({metadata['altitude'].unique()}). This is not expected.")
 
     if not include_metadata:
-        if extra_output is None:
+        if extra_records is None:
             return data  # overload case 1
         return data, extra_data  # overload case 3
 
-    if extra_output is None:
+    if extra_records is None:
         return data, metadata  # overload case 2
     return data, metadata, extra_data  # overload case 4
 
