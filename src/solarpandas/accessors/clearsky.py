@@ -2,6 +2,7 @@
 from functools import lru_cache
 from typing import Literal
 
+import numpy as np
 import pandas as pd
 import spartasolar.atmosphere
 from loguru import logger
@@ -15,7 +16,7 @@ logger = logger.opt(colors=True)
 
 @lru_cache(maxsize=None)
 def _compute_cached_clearsky(
-    index: tuple,
+    times: bytes,
     latitude: float,
     longitude: float,
     atmosphere: str,
@@ -24,6 +25,7 @@ def _compute_cached_clearsky(
     logger.debug(f"evaluating clearsky irradiance with `{model}` model "
                  f"and `{atmosphere}` atmosphere...")
     atmos_obj = getattr(spartasolar.atmosphere, atmosphere)
+    index = pd.to_datetime(np.frombuffer(times, dtype="datetime64[ns]"))
     args = (pd.DatetimeIndex(index), latitude, longitude)
     try:
         return atmos_obj.at_site(*args).compute(model)
@@ -80,8 +82,15 @@ class BaseClearskyIrradianceAccessor:
         return obj
 
     def _get_cached_clearsky(self, variable: Literal["ghi", "dni", "dif", "csi"]):
+        # To speed up the cache lookup, we convert the times to bytes and use them as part
+        # of the cache key (see related notes in the solpos accessor).
+        # The numpy datetime64[ns] type does not have timezone information, so we need to
+        # convert the times to UTC before converting to bytes. Then, we transform the utc
+        # times to tz-naive because the current version of sparta-solar does not support
+        # timezone-aware times.
+        time_ary_bytes = np.array(self._sdf.index.tz_convert("UTC"), dtype="datetime64[ns]").tobytes()
         clearsky = _compute_cached_clearsky(
-            tuple(self._sdf.index),
+            time_ary_bytes,
             self._sdf.latitude,
             self._sdf.longitude,
             self._atmosphere,

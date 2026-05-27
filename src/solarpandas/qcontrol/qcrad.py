@@ -1,6 +1,6 @@
 
 from .helpers import QCTest
-from . import ppl, erl, Kspace, closure
+from . import ppl, erl, Kspace, closure, tracker
 
 ghi_ppl = QCTest(name="ghi_ppl", _test_func=ppl.test_ghi, _plot_func=ppl.plot_test_ghi)
 dif_ppl = QCTest(name="dif_ppl", _test_func=ppl.test_dif, _plot_func=ppl.plot_test_dif)
@@ -18,3 +18,4 @@ K_erl_clear = QCTest(name="K_erl_clear", _test_func=Kspace.test_K_erl_clear, _pl
 
 closure = QCTest(name="closure", _test_func=closure.test_closure, _plot_func=closure.plot_test_closure)
 
+trackeroff = QCTest(name="trackeroff", _test_func=tracker.test_trackeroff, _plot_func=tracker.plot_test_trackeroff)
