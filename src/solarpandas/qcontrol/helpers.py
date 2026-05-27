@@ -3,6 +3,7 @@ import copy
 from dataclasses import dataclass
 from typing import Callable
 
+import colorcet as cc
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -13,6 +14,13 @@ from ..types import QCFlagEnum
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
+
+
+MAX_VALUE_COLOR = "coral"
+MIN_VALUE_COLOR = "coral"  # "mistyrose"
+FAILED_COLOR = "firebrick"
+NOT_VERIFIABLE_COLOR = "navajowhite"
+DENSITY_CMAP = cc.cm.blues_r
 
 
 def construct_qcflag_array(failed: pd.Series, passed: pd.Series) -> np.ndarray[np.int8]:

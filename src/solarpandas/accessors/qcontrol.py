@@ -51,6 +51,7 @@ def _run_cached_qc(hashdf: HashableDF) -> SolarDataFrame:
     qc_results.append(qcrad.KT_erl(sdf))
     qc_results.append(qcrad.K_erl(sdf))
     qc_results.append(qcrad.K_erl_clear(sdf))
+    qc_results.append(qcrad.closure(sdf))
 
     return pd.concat(qc_results, axis=1)
 

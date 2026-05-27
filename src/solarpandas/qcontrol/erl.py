@@ -3,16 +3,21 @@
 Source: ...
 """
 
-import colorcet as cc
 import datashader as ds
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from loguru import logger
 
-from .helpers import construct_qcflag_array
 from ..base import SolarDataFrame, SolarSeries
 from ..types import QCFlagEnum
+from .helpers import (
+    construct_qcflag_array,
+    MAX_VALUE_COLOR,
+    MIN_VALUE_COLOR,
+    FAILED_COLOR,
+    DENSITY_CMAP,
+)
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
@@ -124,11 +129,6 @@ def plot_test(column: str, sdf: SolarDataFrame, **kwargs) -> plt.Axes:
     if "rc" in kwargs:
         mpl.rcParams.update(kwargs["rc"])
 
-    max_value_color = "mistyrose"
-    min_value_color = "mistyrose"
-    failed_color = "firebrick"
-    density_cmap = cc.cm.blues_r
-
     ax = kwargs.pop("ax", None)
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(12, 8), layout="constrained")
@@ -147,12 +147,13 @@ def plot_test(column: str, sdf: SolarDataFrame, **kwargs) -> plt.Axes:
                     x_range=(sdf.solpos.zenith.min(), sdf.solpos.zenith.max()),
                     y_range=(-10, sdf[column].max()))
 
-    plt.scatter("zenith", "max_value", data=sdf, label="Max Limit", color=max_value_color, s=1)
-    plt.scatter("zenith", "min_value", data=sdf, label="Min Limit", color=min_value_color, s=1)
+    plt.scatter("zenith", "max_value", data=sdf, label="Max Limit", color=MAX_VALUE_COLOR, s=2)
+    plt.scatter("zenith", "min_value", data=sdf, label="Min Limit", color=MIN_VALUE_COLOR, s=2)
     agg = cvs.points(sdf, "zenith", column, ds.count()).pipe(lambda xa: xa.where(xa > 0))
-    mesh = ax.pcolormesh(agg.zenith, agg[column], agg.values, cmap=density_cmap, norm=plt.cm.colors.LogNorm())
+    mesh = ax.pcolormesh(agg.zenith, agg[column], agg.values, cmap=DENSITY_CMAP, norm=plt.cm.colors.LogNorm())
     plt.colorbar(mesh, ax=ax, pad=0.02, label=f"{column.upper()} Counts Density (log scale)")
-    plt.scatter("zenith", column, data=sdf.loc[sdf.test.flag.fails], label="Failed Points", color=failed_color, s=8)
+    plt.scatter("zenith", column, data=sdf.loc[sdf.test.flag.fails], label="Failed Points",
+                color=FAILED_COLOR, s=5, zorder=1003)
     plt.xlabel("Solar Zenith Angle (deg)")
     plt.ylabel(f"{column.upper()} (W m$^{{-2}}$)")
     plt.title(title)
