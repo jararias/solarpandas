@@ -19,10 +19,12 @@ from .accessors import (
 )
 from .base import SolarSeries, SolarDataFrame, read_csv, read_parquet 
 from .logtools import enable_logger
+from .mplstyles import register as _register_mplstyles
 
 try:
     __version__ = importlib.metadata.version("solarpandas")
 except importlib.metadata.PackageNotFoundError:
     __version__ = "0.0.0"
 
-enable_logger("solarpandas", level="DEBUG")
+_register_mplstyles()
+enable_logger("solarpandas", level="INFO")

@@ -88,6 +88,7 @@ class SolarPositionAccessor:
 
     def __init__(self, sdf_obj):
         self._sdf = self._validate(sdf_obj)
+        self._ISC = 1361.1  # W m-2, the solar constant
         self._algorithm = get_option("solar-position.algorithm", default="psa")
         self._refraction = get_option("solar-position.refraction", default=True)
         self._engine = get_option("solar-position.engine", default="numexpr")
@@ -143,7 +144,7 @@ class SolarPositionAccessor:
 
         logger.debug(f"retrieved cached solar position. Extracting `{attr_name}`...")
         if callable(data := getattr(solpos, attr_name)):
-            data = data()
+            data = data(ISC=self._ISC) if attr_name == "eth" else data()
 
         if "site" in data.dims:
             data = data.isel(site=0)
@@ -187,7 +188,7 @@ class SolarPositionAccessor:
 
     @property
     def etn(self):
-        return (self.eth / self.cosz).where(self.cosz > 1e-6, 0.0)
+        return self._ISC * self.ecf
 
     @property
     def ecf(self):

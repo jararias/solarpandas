@@ -332,6 +332,8 @@ def load_data_from_bsrn_files(
     custom_metadata = {key: allsite_metadata[key] for key in allsite_metadata.keys()
                        if key not in ["latitude", "longitude", "altitude"]}
     custom_metadata["timestamp_alignment"] = "center" if centered else "start"
+    custom_metadata["acronym"] = site.upper()
+    custom_metadata["network"] = "BSRN"
 
     data = SolarDataFrame(
         data,

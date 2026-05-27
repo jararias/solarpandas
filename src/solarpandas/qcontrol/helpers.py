@@ -5,12 +5,23 @@ from typing import Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from loguru import logger
 
 from ..base import SolarDataFrame, SolarSeries
+from ..types import QCFlagEnum
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
+
+
+def construct_qcflag_array(failed: pd.Series, passed: pd.Series) -> np.ndarray[np.int8]:
+    """Helper function to construct a QC flag array from boolean failed and passed series."""
+    n = len(failed)
+    flag_array = np.full(n, QCFlagEnum.NOT_VERIFIABLE.value, dtype=np.int8)
+    flag_array[failed] = QCFlagEnum.FAILED.value
+    flag_array[passed] = QCFlagEnum.PASSED.value
+    return flag_array
 
 
 def construct_flag_series(

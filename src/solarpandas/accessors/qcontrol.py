@@ -43,6 +43,14 @@ def _run_cached_qc(hashdf: HashableDF) -> SolarDataFrame:
     qc_results.append(qcrad.ghi_ppl(sdf))
     qc_results.append(qcrad.dif_ppl(sdf))
     qc_results.append(qcrad.dni_ppl(sdf))
+    qc_results.append(qcrad.ghi_erl(sdf))
+    qc_results.append(qcrad.dif_erl(sdf))
+    qc_results.append(qcrad.dni_erl(sdf))
+    qc_results.append(qcrad.Kn_ppl(sdf))
+    qc_results.append(qcrad.Kn_erl(sdf))
+    qc_results.append(qcrad.KT_erl(sdf))
+    qc_results.append(qcrad.K_erl(sdf))
+    qc_results.append(qcrad.K_erl_clear(sdf))
 
     return pd.concat(qc_results, axis=1)
 
