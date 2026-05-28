@@ -23,7 +23,6 @@ from ..base import SolarDataFrame, SolarSeries
 from ..types import QCFlagEnum
 from .helpers import (
     construct_qcflag_array,
-    MAX_VALUE_COLOR,
     FAILED_COLOR,
     NOT_VERIFIABLE_COLOR,
     DENSITY_CMAP,

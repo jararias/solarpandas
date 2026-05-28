@@ -49,6 +49,7 @@ class QCFlagDtype(ExtensionDtype):
     def __repr__(self) -> str:
         return "QCFlagDtype()"
 
+
 class QCFlagArray(ExtensionArray):
     """ExtensionArray for QC flag values: -1, 0, 1 (or NA).
 
@@ -79,9 +80,11 @@ class QCFlagArray(ExtensionArray):
         """
         if not isinstance(values, np.ndarray) or values.dtype != np.int8:
             raise TypeError("values must be a np.ndarray of dtype int8")
-        na_mask = pd.isna(values)
+        na_mask = values == _NA_SENTINEL
         if (invalid := ~na_mask & ~np.isin(values, _VALID_VALUES)).any():
-            raise ValueError(f"values must be -1, 0, 1 or NA; got {np.unique(values[invalid])}")
+            raise ValueError(
+                f"values must be -1, 0, 1 or NA; got {np.unique(values[invalid])}"
+            )
         self._data = values.copy() if copy else values
 
     @classmethod
@@ -106,7 +109,9 @@ class QCFlagArray(ExtensionArray):
             invalid = ~na_mask & ~np.isin(raw, _VALID_VALUES)
             if invalid.any():
                 bad = np.unique(raw[invalid]).tolist()
-                logger.warning(f"QCFlagArray only accepts -1, 0 or 1; got {bad}. Set them to NA instead.")
+                logger.warning(
+                    f"QCFlagArray only accepts -1, 0 or 1; got {bad}. Set them to NA instead."
+                )
                 raw[invalid] = _NA_SENTINEL
 
         return cls(raw, copy=copy)
@@ -131,13 +136,20 @@ class QCFlagArray(ExtensionArray):
     # Required abstract methods
     # ------------------------------------------------------------------
 
+    @classmethod
+    def _from_raw(cls, values: np.ndarray) -> QCFlagArray:
+        """Construct from a pre-validated int8 array, skipping validation."""
+        obj = cls.__new__(cls)
+        obj._data = values
+        return obj
+
     def __getitem__(self, key):
         result = self._data[key]
         if np.ndim(result) == 0:
             # scalar extraction
             v = np.int8(result)
             return pd.NA if v == _NA_SENTINEL else v
-        return type(self)(result)
+        return type(self)._from_raw(result)
 
     def __setitem__(self, key, value) -> None:
         if isinstance(value, type(self)):
@@ -224,5 +236,3 @@ class QCFlagArray(ExtensionArray):
     def not_verifiable(self) -> np.ndarray:
         """Boolean mask: True where the flag is 0 (not verifiable)."""
         return (self._data == np.int8(0)) & ~self.isna()
-
-

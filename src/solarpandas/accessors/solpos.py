@@ -1,5 +1,6 @@
 
 from functools import lru_cache
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -112,7 +113,7 @@ class SolarPositionAccessor:
         kwargs = {"algorithm": algorithm, "refraction": refraction, "engine": engine}
         return sunwhere.sites(*args, **kwargs)
 
-    def _get_cached_solpos(self, attr_name: str, as_solarseries: bool = True):
+    def _get_cached_solpos(self, attr_name: str, as_solarseries: bool = True, **kwargs):
         logger.debug(f"accessing cached solar position attribute `{attr_name}`...")
 
         # N.B. IMPORTANT!!!!
@@ -144,7 +145,7 @@ class SolarPositionAccessor:
 
         logger.debug(f"retrieved cached solar position. Extracting `{attr_name}`...")
         if callable(data := getattr(solpos, attr_name)):
-            data = data(ISC=self._ISC) if attr_name == "eth" else data()
+            data = data(ISC=self._ISC) if attr_name == "eth" else data(**kwargs)
 
         if "site" in data.dims:
             data = data.isel(site=0)
@@ -224,3 +225,19 @@ class SolarPositionAccessor:
     @property
     def lst(self):
         return self.local_solar_time
+
+    def sunrise(self, units: Literal["rad", "deg", "tst", "lst", "utc"] = "utc"):
+        sr = self._get_cached_solpos("sunrise", units={"lst": "utc"}.get(units, units))
+        if units == "lst":
+            # convert from UTC to LST
+            deltat = pd.Timedelta(self._sdf.longitude * 4, "min")
+            sr = sr + deltat
+        return sr
+
+    def sunset(self, units: Literal["rad", "deg", "tst", "lst", "utc"] = "utc"):
+        ss = self._get_cached_solpos("sunset", units={"lst": "utc"}.get(units, units))
+        if units == "lst":
+            # convert from UTC to LST
+            deltat = pd.Timedelta(self._sdf.longitude * 4, "min")
+            ss = ss + deltat
+        return ss

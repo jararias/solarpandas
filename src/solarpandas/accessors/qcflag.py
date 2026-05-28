@@ -1,13 +1,14 @@
-
-
 import inspect
 
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 from loguru import logger
+from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from ..base import SolarDataFrame, SolarSeries
+from ..qcontrol import helpers, qcrad
 from ..types import QCFlagDtype, QCFlagEnum
-from ..qcontrol import qcrad, helpers
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
@@ -78,12 +79,41 @@ class QCFlagAccessor:
             logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
             return
 
-        for _, obj in inspect.getmembers(qcrad, predicate=lambda obj: isinstance(obj, helpers.QCTest)):
+        for _, obj in inspect.getmembers(
+            qcrad, predicate=lambda obj: isinstance(obj, helpers.QCTest)
+        ):
             if obj.name == self._series.name:
                 plot_func = obj._plot_func
                 break
         else:
-            logger.warning(f"No QCTest found for series '{self._series.name}'. Cannot plot.")
+            logger.warning(
+                f"No QCTest found for series '{self._series.name}'. Cannot plot."
+            )
             return
 
         return plot_func(sdf, self._series)
+
+    def dtmap(self) -> None:
+        """Plot a date-time map of the original data colored by flag values for visual inspection."""
+        if not isinstance(self._series, SolarSeries):
+            logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
+            return
+
+        COLOR_FAILED = "firebrick"
+        COLOR_PASSED = "#c1f0c1"
+        COLOR_NOT_VERIFIABLE = "lightyellow"
+        cmap = ListedColormap([COLOR_FAILED, COLOR_NOT_VERIFIABLE, COLOR_PASSED])
+        norm = BoundaryNorm([-1.5, -0.5, 0.5, 1.5], cmap.N)
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 5), layout="constrained")
+        ax.set_facecolor("white")
+
+        kwargs = {"twilight_line": True, "aggfunc": "median", "cmap": cmap, "norm": norm}
+        self._series.astype(np.int8).solarplot.dtmap(ax=ax,colorbar=False, **kwargs)
+        ax.set_title(f"QC Flag for -- {self._series.name} --")
+
+        mesh = ax.collections[0]
+        cax = ax.inset_axes([0., -0.15, 0.4, 0.03], transform=ax.transAxes)
+        cbar = fig.colorbar(mesh, cax=cax, orientation="horizontal")
+        cbar.set_ticks([-1, 0, 1])
+        cbar.ax.set_xticklabels(["FAILED", "NOT VERIFIABLE", "PASSED"])
