@@ -25,6 +25,7 @@ logger = logger.opt(colors=True)
 
 
 SUPPORTED_LOGICAL_RECORDS = [
+    # metadata
     "LR0001",
     "LR0002",
     "LR0003",
@@ -34,34 +35,11 @@ SUPPORTED_LOGICAL_RECORDS = [
     "LR0007",
     "LR0008",
     "LR0009",
-    "LR0100",
-    "LR0300",
-    "LR0500",
+    # measurements
+    "LR0100",  # basic radiation measurements
+    "LR0300",  # other radiation measurements (net and upward fluxes)
+    "LR0500",  # uv measurements
 ]
-
-
-# MAPPING_OF_NAMES = {
-#     # LR0100
-#     'global_horizontal_avg': {'short_name': 'ghi', 'description': 'global horizontal irradiance', 'unit': 'W m-2'},
-#     'global_horizontal_std': {'short_name': 'ghi_std', 'description': 'standard deviation of global horizontal irradiance', 'unit': 'W m-2'},
-#     'global_horizontal_min': {'short_name': 'ghi_min', 'description': 'minimum global horizontal irradiance', 'unit': 'W m-2'},
-#     'global_horizontal_max': {'short_name': 'ghi_max', 'description': 'maximum global horizontal irradiance', 'unit': 'W m-2'},
-#     'direct_normal_avg': {'short_name': 'dni', 'description': 'direct normal irradiance', 'unit': 'W m-2'},
-#     'direct_normal_std': {'short_name': 'dni_std', 'description': 'standard deviation of direct normal irradiance', 'unit': 'W m-2'},
-#     'direct_normal_min': {'short_name': 'dni_min', 'description': 'minimum direct normal irradiance', 'unit': 'W m-2'},
-#     'direct_normal_max': {'short_name': 'dni_max', 'description': 'maximum direct normal irradiance', 'unit': 'W m-2'},
-#     'diffuse_horizontal_avg': {'short_name': 'dif', 'description': 'diffuse horizontal irradiance', 'unit': 'W m-2'},
-#     'diffuse_horizontal_std': {'short_name': 'dif_std', 'description': 'standard deviation of diffuse horizontal irradiance', 'unit': 'W m-2'},
-#     'diffuse_horizontal_min': {'short_name': 'dif_min', 'description': 'minimum diffuse horizontal irradiance', 'unit': 'W m-2'},
-#     'diffuse_horizontal_max': {'short_name': 'dif_max', 'description': 'maximum diffuse horizontal irradiance', 'unit': 'W m-2'},
-#     'downward_longwave_avg': {'short_name': 'lwd', 'description': 'downward longwave irradiance', 'unit': 'W m-2'},
-#     'downward_longwave_std': {'short_name': 'lwd_std', 'description': 'standard deviation of downward longwave irradiance', 'unit': 'W m-2'},
-#     'downward_longwave_min': {'short_name': 'lwd_min', 'description': 'minimum downward longwave irradiance', 'unit': 'W m-2'},
-#     'downward_longwave_max': {'short_name': 'lwd_max', 'description': 'maximum downward longwave irradiance', 'unit': 'W m-2'},
-#     'air_temperature': {'short_name': 'temp', 'description': 'air temperature', 'unit': '°C'},
-#     'relative_humidity': {'short_name': 'rh', 'description': 'relative humidity', 'unit': '%'},
-#     'atmospheric_pressure': {'short_name': 'pres', 'description': 'atmospheric pressure', 'unit': 'hPa'}
-# }
 
 
 def get_database_path():
