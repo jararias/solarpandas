@@ -9,7 +9,7 @@ from loguru import logger
 from matplotlib.dates import DateFormatter
 
 from ..base import SolarDataFrame, SolarSeries
-from ..helpers import infer_time_step
+from ..helpers import infer_time_step, normalize
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
@@ -28,7 +28,7 @@ class SolarPlotAccessor:
             raise AttributeError(f"required a SolarSeries orSolarDataFrame instance. Got {name}")
         return obj
 
-    def dtmap(
+    def heatmap(
         self,
         column: str | None = None,
         time_ref: Literal["lst", "tst", "lat", "utc"] = "tst",
@@ -41,7 +41,7 @@ class SolarPlotAccessor:
         **kwargs
     ) -> plt.Figure:
 
-        YLABEL_MAPPING = {
+        MAP_OF_YLABELS = {
             "lst": "Local Solar Time",
             "tst": "True Solar Time",
             "lat": "Local Apparent Time",
@@ -66,6 +66,9 @@ class SolarPlotAccessor:
             sdf = self._sdf[[column]]
 
         df = pd.DataFrame(sdf.where(self._sdf.solpos.zenith < (max_sza or 180.), pd.NA))
+
+        # extend the dataframe to have a complete first and last days
+        df = normalize(df)
 
         time_step = infer_time_step(df)
 
@@ -117,6 +120,6 @@ class SolarPlotAccessor:
 
         ax.yaxis.set_major_formatter(DateFormatter("%H:%M"))
         ax.set_ylim(np.datetime64(0, "m"), np.datetime64(24 * 60, "m"))
-        ax.set_ylabel(YLABEL_MAPPING.get(time_ref.casefold()))
+        ax.set_ylabel(MAP_OF_YLABELS.get(time_ref.casefold()))
 
         return ax.get_figure()

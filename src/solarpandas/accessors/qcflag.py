@@ -7,6 +7,7 @@ from loguru import logger
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from ..base import SolarDataFrame, SolarSeries
+from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_PASSED, QC_COLOR_NOT_VERIFIABLE
 from ..qcontrol import helpers, qcrad
 from ..types import QCFlagDtype, QCFlagEnum
 
@@ -93,23 +94,20 @@ class QCFlagAccessor:
 
         return plot_func(sdf, self._series)
 
-    def dtmap(self) -> None:
+    def heatmap(self) -> None:
         """Plot a date-time map of the original data colored by flag values for visual inspection."""
         if not isinstance(self._series, SolarSeries):
             logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
             return
 
-        COLOR_FAILED = "firebrick"
-        COLOR_PASSED = "#c1f0c1"
-        COLOR_NOT_VERIFIABLE = "lightyellow"
-        cmap = ListedColormap([COLOR_FAILED, COLOR_NOT_VERIFIABLE, COLOR_PASSED])
+        cmap = ListedColormap([QC_COLOR_FAILED, QC_COLOR_NOT_VERIFIABLE, QC_COLOR_PASSED])
         norm = BoundaryNorm([-1.5, -0.5, 0.5, 1.5], cmap.N)
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 5), layout="constrained")
         ax.set_facecolor("white")
 
         kwargs = {"twilight_line": True, "aggfunc": "median", "cmap": cmap, "norm": norm}
-        self._series.astype(np.int8).solarplot.dtmap(ax=ax,colorbar=False, **kwargs)
+        self._series.astype(np.int8).solarplot.heatmap(ax=ax,colorbar=False, **kwargs)
         ax.set_title(f"QC Flag for -- {self._series.name} --")
 
         mesh = ax.collections[0]

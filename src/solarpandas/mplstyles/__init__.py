@@ -9,3 +9,6 @@ def register():
     for key, value in styles.items():
         plt.style.library[f"solarpandas-{key}"] = value
 
+QC_COLOR_FAILED = "#d46c4c"  # light red
+QC_COLOR_PASSED = "#e6f2ff"  # light blue
+QC_COLOR_NOT_VERIFIABLE = "#ffffcc"  # light yellow

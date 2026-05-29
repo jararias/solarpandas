@@ -1,10 +1,16 @@
 
-from functools import lru_cache
+from functools import lru_cache, reduce
+from typing import Literal
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from loguru import logger
+from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from ..base import SolarDataFrame, SolarSeries
+from ..helpers import infer_time_step
+from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_PASSED
 from ..qcontrol import qcrad
 
 logger.disable(__name__)
@@ -39,22 +45,22 @@ def _run_cached_qc(hashdf: HashableDF) -> SolarDataFrame:
 
     sdf = hashdf.dataframe
 
-    qc_results = []
-    qc_results.append(qcrad.ghi_ppl(sdf))
-    qc_results.append(qcrad.dif_ppl(sdf))
-    qc_results.append(qcrad.dni_ppl(sdf))
-    qc_results.append(qcrad.ghi_erl(sdf))
-    qc_results.append(qcrad.dif_erl(sdf))
-    qc_results.append(qcrad.dni_erl(sdf))
-    qc_results.append(qcrad.Kn_ppl(sdf))
-    qc_results.append(qcrad.Kn_erl(sdf))
-    qc_results.append(qcrad.KT_erl(sdf))
-    qc_results.append(qcrad.K_erl(sdf))
-    qc_results.append(qcrad.K_erl_clear(sdf))
-    qc_results.append(qcrad.closure(sdf))
-    qc_results.append(qcrad.trackeroff(sdf))
+    tests = []
+    tests.append(qcrad.ghi_ppl(sdf))
+    tests.append(qcrad.dif_ppl(sdf))
+    tests.append(qcrad.dni_ppl(sdf))
+    tests.append(qcrad.ghi_erl(sdf))
+    tests.append(qcrad.dif_erl(sdf))
+    tests.append(qcrad.dni_erl(sdf))
+    tests.append(qcrad.Kn_ppl(sdf))
+    tests.append(qcrad.Kn_erl(sdf))
+    tests.append(qcrad.KT_erl(sdf))
+    tests.append(qcrad.K_erl(sdf))
+    tests.append(qcrad.K_erl_clear(sdf))
+    tests.append(qcrad.closure(sdf))
+    tests.append(qcrad.trackeroff(sdf))
 
-    return pd.concat(qc_results, axis=1)
+    return pd.concat(tests, axis=1)
 
 
 def clear_qc_cache() -> None:
@@ -93,32 +99,191 @@ def get_qc_cache_info():
     }
 
 
+_COMPONENT_TO_TEST_MAP = {
+    "ghi": {
+        "1-component": ["ghi_ppl", "ghi_erl"],
+        "2-component": ["Kn_ppl", "KT_erl", "K_erl", "K_erl_clear", "trackeroff"],
+        "3-component": ["closure"]
+    },
+    "dni": {
+        "1-component": ["dni_ppl", "dni_erl"],
+        "2-component": ["Kn_ppl", "Kn_erl", "K_erl", "K_erl_clear", "trackeroff"],
+        "3-component": ["closure"]
+    },
+    "dif": {
+        "1-component": ["dif_ppl", "dif_erl"],
+        "2-component": [],
+        "3-component": ["closure"]
+    }
+}
+
+
 @pd.api.extensions.register_dataframe_accessor("qc")
 class QualityControlAccessor:
     """Accessor for computing quality control flags and related results."""
 
     def __init__(self, sdf_obj):
         self._sdf = self._validate(sdf_obj)
-        self._results = _run_cached_qc(HashableDF(self._sdf))
+        self._tests = _run_cached_qc(HashableDF(self._sdf))
 
     @staticmethod
     def _validate(obj):
         if not isinstance(obj, SolarDataFrame):
             name = obj.__class__.__name__
             raise AttributeError(f"required a SolarDataFrame instance. Got {name}")
+        time_step = infer_time_step(obj)
+        if time_step is None:
+            logger.warning(
+                "Could not infer the time step of the data. QC tests may be inaccurate or fail "
+                "if it is other than one minute. Please, make sure the index is a DateTimeIndex "
+                "with a regular 1-minute frequency.")
+        elif time_step != pd.Timedelta("1min"):
+            logger.warning(
+                f"the inferred time step is {time_step}. Please, be aware that QC tests are "
+                "designed for 1-minute data and may not be accurate or fail.")
         return obj
 
     def __getitem__(self, key: str) -> SolarSeries:
-        if key not in self._results.columns:
+        if key not in self._tests.columns:
             raise KeyError(f"QC test '{key}' not found in results.")
-        return self._results[key]
+        return self._tests[key]
 
     def __getattr__(self, name: str) -> SolarSeries:
-        if name not in self._results.columns:
+        if name not in self._tests.columns:
             raise AttributeError(f"QC test '{name}' not found in results.")
-        return self._results[name]
+        return self._tests[name]
 
     @property
     def tests(self) -> SolarDataFrame:
         """Return the columns of the QC results."""
-        return self._results
+        return self._tests
+
+    def filter(
+        self,
+        component: Literal["ghi", "dni", "dif"] | None = None,
+        *,
+        tests: list[str] | None = None,
+        like: str | None = None,
+        regex: str | None = None,
+    ) -> pd.DataFrame:
+
+        if component is not None:
+            if component.casefold() not in ("ghi", "dni", "dif"):
+                raise ValueError("component must be one of 'ghi', 'dni', 'dif' or None")
+
+            if any([tests, like, regex]):
+                logger.warning("Cannot specify `component` together with `tests`, `like` or `regex` "
+                               "filters. Ignoring filters and using component only.")
+
+            logger.debug(f"Filtering QC tests for component '{component}'")
+            tests = reduce(lambda x, y: x + y, _COMPONENT_TO_TEST_MAP.get(component).values())
+            logger.debug(f"Tests for component '{component}': {tests}")
+
+        tests = self._tests.filter(items=tests, like=like, regex=regex, axis=1)
+        logger.info(f"Filtered QC tests: {tests.columns.tolist()}")
+        return tests
+
+    def failed(
+        self,
+        component: Literal["ghi", "dni", "dif"] | None = None,
+        *,
+        tests: list[str] | None = None,
+        like: str | None = None,
+        regex: str | None = None,
+    ) -> pd.Series:
+
+        return (
+            self.filter(component, tests=tests, like=like, regex=regex)
+            .apply(lambda test: test.flag.fails)
+            .any(axis=1)
+        )
+
+    def passed(
+        self,
+        component: Literal["ghi", "dni", "dif"] | None = None,
+        *,
+        tests: list[str] | None = None,
+        like: str | None = None,
+        regex: str | None = None,
+    ) -> pd.Series:
+
+        return (
+            self.filter(component, tests=tests, like=like, regex=regex)
+            .apply(lambda test: test.flag.passes | test.flag.not_verifiable)
+            .all(axis=1)
+        )
+
+    def mask_failed(
+        self,
+        component: Literal["ghi", "dni", "dif"] | None = None,
+        *,
+        tests: list[str] | None = None,
+        like: str | None = None,
+        regex: str | None = None,
+        **kwargs
+    ) -> pd.DataFrame:
+
+        failed = self.failed(component, tests=tests, like=like, regex=regex)
+
+        if component is None:
+            return self._sdf.mask(failed, **kwargs)
+
+        masked_sdf =self._sdf.copy()
+        masked_sdf[component] = masked_sdf[component].mask(failed, **kwargs)
+        return masked_sdf
+
+    def heatmap(
+        self,
+        component: Literal["ghi", "dni", "dif"] | None = None,
+        *,
+        tests: list[str] | None = None,
+        like: str | None = None,
+        regex: str | None = None,
+        combined: bool = False,
+        **kwargs
+    ) -> plt.Figure:
+
+        if not combined:
+            series = self.passed(component, tests=tests, like=like, regex=regex).astype(np.int8)
+            cmap = ListedColormap([QC_COLOR_FAILED, QC_COLOR_PASSED])
+            norm = BoundaryNorm([-0.5, 0.5, 1.5], cmap.N)
+            ticks = {0: "FAILED", 1: "PASSED"}
+            cax_bounds = [0.05, -0.15, 0.3, 0.03]
+        else:
+
+            def get_failed(components):
+                return self.failed(tests=_COMPONENT_TO_TEST_MAP.get(component).get(components))
+
+            series = self._sdf.clone(other=0.).iloc[:, 0].astype(np.int8)
+            series.loc[get_failed("1-component")] = np.int8(1)
+            series.loc[get_failed("2-component")] = np.int8(2)
+            series.loc[get_failed("3-component")] = np.int8(3)
+
+            cmap = ListedColormap(["#e6f2ff", "#84e184", "#4d94ff", "#ff6666"])
+            norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5, 3.5], cmap.N)
+            ticks = {0: "Passed", 1: "1-comp", 2: "2-comp", 3: "3-comp"}
+            cax_bounds = [0.025, -0.15, 0.35, 0.03]
+
+        title = "QC Results"
+        if component is not None:
+            title += f" for {component.upper()}"
+        network = self._sdf.custom_metadata.get("network", None)
+        if network is not None and network.casefold() == "bsrn":
+            station = self._sdf.custom_metadata.get("station", "unknown station")
+            location = self._sdf.custom_metadata.get("location", "unknown location")
+            acronym = self._sdf.custom_metadata.get("acronym", "unknown acronym")
+            title += f" at {station}, {location} ({acronym.upper()}, BSRN)"
+        title += f" (lat={self._sdf.latitude:.4f}, lon={self._sdf.longitude:.4f}, alt={self._sdf.elevation:.0f} m)"
+
+        fig, ax = plt.subplots(1, 1, figsize=(14, 5), layout="constrained")
+        ax.set_facecolor("white")
+
+        kwargs = {"twilight_line": True, "aggfunc": "median", "cmap": cmap, "norm": norm}
+        series.solarplot.heatmap(ax=ax, colorbar=False, **kwargs)
+        ax.set_title(title)
+
+        mesh = ax.collections[0]
+        cax = ax.inset_axes(cax_bounds, transform=ax.transAxes)
+        cbar = fig.colorbar(mesh, cax=cax, orientation="horizontal")
+        cbar.set_ticks(list(ticks.keys()))
+        cbar.ax.set_xticklabels(list(ticks.values()))
