@@ -1,0 +1,425 @@
+{
+    "global_horizontal_avg": {
+        "standard_name": "surface_downwelling_shortwave_flux_in_air",
+        "long_name": "global horizontal irradiance",
+        "short_name": "ghi",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0100"
+    },
+    "global_horizontal_std": {
+        "standard_name": "surface_downwelling_shortwave_flux_in_air",
+        "long_name": "global horizontal irradiance",
+        "short_name": "ghi_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "global_horizontal_min": {
+        "standard_name": "surface_downwelling_shortwave_flux_in_air",
+        "long_name": "global horizontal irradiance",
+        "short_name": "ghi_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "global_horizontal_max": {
+        "standard_name": "surface_downwelling_shortwave_flux_in_air",
+        "long_name": "global horizontal irradiance",
+        "short_name": "ghi_max",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "direct_normal_avg": {
+        "standard_name": "surface_direct_normal_downwelling_shortwave_flux_in_air",
+        "long_name": "direct normal irradiance",
+        "short_name": "dni",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0100"
+    },
+    "direct_normal_std": {
+        "standard_name": "surface_direct_normal_downwelling_shortwave_flux_in_air",
+        "long_name": "direct normal irradiance",
+        "short_name": "dni_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "direct_normal_min": {
+        "standard_name": "surface_direct_normal_downwelling_shortwave_flux_in_air",
+        "long_name": "direct normal irradiance",
+        "short_name": "dni_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "direct_normal_max": {
+        "standard_name": "surface_direct_normal_downwelling_shortwave_flux_in_air",
+        "long_name": "direct normal irradiance",
+        "short_name": "dni_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximum (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "diffuse_horizontal_avg": {
+        "standard_name": "surface_diffuse_downwelling_shortwave_flux_in_air",
+        "long_name": "diffuse horizontal irradiance",
+        "short_name": "dif",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0100"
+    },
+    "diffuse_horizontal_std": {
+        "standard_name": "surface_diffuse_downwelling_shortwave_flux_in_air",
+        "long_name": "diffuse horizontal irradiance",
+        "short_name": "dif_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "diffuse_horizontal_min": {
+        "standard_name": "surface_diffuse_downwelling_shortwave_flux_in_air",
+        "long_name": "diffuse horizontal irradiance",
+        "short_name": "dif_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "diffuse_horizontal_max": {
+        "standard_name": "surface_diffuse_downwelling_shortwave_flux_in_air",
+        "long_name": "diffuse horizontal irradiance",
+        "short_name": "dif_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximum (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "downward_longwave_avg": {
+        "standard_name": "surface_downwelling_longwave_flux_in_air",
+        "long_name": "downward longwave irradiance",
+        "short_name": "lwd",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "avg",
+        "_logical_record": "LR0100"
+    },
+    "downward_longwave_std": {
+        "standard_name": "surface_downwelling_longwave_flux_in_air",
+        "long_name": "downward longwave irradiance",
+        "short_name": "lwd_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "downward_longwave_min": {
+        "standard_name": "surface_downwelling_longwave_flux_in_air",
+        "long_name": "downward longwave irradiance",
+        "short_name": "lwd_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "downward_longwave_max": {
+        "standard_name": "surface_downwelling_longwave_flux_in_air",
+        "long_name": "downward longwave irradiance",
+        "short_name": "lwd_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximumn (interval: 1 minute)",
+        "_logical_record": "LR0100"
+    },
+    "air_temperature": {
+        "standard_name": "air_temperature",
+        "long_name": "air temperature near the surface",
+        "short_name": "temp",
+        "units": "degC",
+        "cell_methods": "time: point",
+        "_groups": "avg",
+        "_logical_record": "LR0100"
+    },
+    "relative_humidity": {
+        "standard_name": "relative_humidity",
+        "long_name": "relative humidity near the surface",
+        "short_name": "rh",
+        "units": "%",
+        "cell_methods": "time: point",
+        "_groups": "avg",
+        "_logical_record": "LR0100"
+    },
+    "atmospheric_pressure": {
+        "standard_name": "air_pressure",
+        "long_name": "atmospheric air pressure at the surface",
+        "short_name": "pres",
+        "units": "hPa",
+        "cell_methods": "time: point",
+        "_groups": "avg",
+        "_logical_record": "LR0100"
+    },
+    "uva_global_avg": {
+        "standard_name": "surface_downwelling_ultraviolet_a_flux_in_air",
+        "long_name": "global horizontal ultraviolet a irradiance",
+        "short_name": "uva",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0500"
+    },
+    "uva_global_std": {
+        "standard_name": "surface_downwelling_ultraviolet_a_flux_in_air",
+        "long_name": "global horizontal ultraviolet a irradiance",
+        "short_name": "uva_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uva_global_min": {
+        "standard_name": "surface_downwelling_ultraviolet_a_flux_in_air",
+        "long_name": "global horizontal ultraviolet a irradiance",
+        "short_name": "uva_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uva_global_max": {
+        "standard_name": "surface_downwelling_ultraviolet_a_flux_in_air",
+        "long_name": "global horizontal ultraviolet a irradiance",
+        "short_name": "uva_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximumn (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_global_avg": {
+        "standard_name": "surface_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "global horizontal ultraviolet b irradiance",
+        "short_name": "uvb",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0500"
+    },
+    "uvb_global_std": {
+        "standard_name": "surface_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "global horizontal ultraviolet b irradiance",
+        "short_name": "uvb_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_global_min": {
+        "standard_name": "surface_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "global horizontal ultraviolet b irradiance",
+        "short_name": "uvb_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_global_max": {
+        "standard_name": "surface_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "global horizontal ultraviolet b irradiance",
+        "short_name": "uvb_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximumn (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_direct_avg": {
+        "standard_name": "surface_direct_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "direct horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dir",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0500"
+    },
+    "uvb_direct_std": {
+        "standard_name": "surface_direct_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "direct horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dir_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_direct_min": {
+        "standard_name": "surface_direct_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "direct horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dir_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_direct_max": {
+        "standard_name": "surface_direct_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "direct horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dir_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximumn (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_diffuse_avg": {
+        "standard_name": "surface_diffuse_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "diffuse horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dif",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0500"
+    },
+    "uvb_diffuse_std": {
+        "standard_name": "surface_diffuse_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "diffuse horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dif_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_diffuse_min": {
+        "standard_name": "surface_diffuse_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "diffuse horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dif_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_diffuse_max": {
+        "standard_name": "surface_diffuse_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "diffuse horizontal ultraviolet b irradiance",
+        "short_name": "uvb_dif_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximumn (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_reflected_avg": {
+        "standard_name": "surface_reflected_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "reflected ultraviolet b irradiance",
+        "short_name": "uvr",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0500"
+    },
+    "uvb_reflected_std": {
+        "standard_name": "surface_reflected_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "reflected ultraviolet b irradiance",
+        "short_name": "uvr_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_reflected_min": {
+        "standard_name": "surface_reflected_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "reflected ultraviolet b irradiance",
+        "short_name": "uvr_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "uvb_reflected_max": {
+        "standard_name": "surface_reflected_downwelling_ultraviolet_b_flux_in_air",
+        "long_name": "reflected ultraviolet b irradiance",
+        "short_name": "uvr_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximum (interval: 1 minute)",
+        "_logical_record": "LR0500"
+    },
+    "upward_shortwave_reflected_avg": {
+        "standard_name": "surface_upwelling_shortwave_flux_in_air",
+        "long_name": "reflected shortwave irradiance",
+        "short_name": "swu",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0300"
+    },
+    "upward_shortwave_reflected_std": {
+        "standard_name": "surface_upwelling_shortwave_flux_in_air",
+        "long_name": "reflected shortwave irradiance",
+        "short_name": "swu_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "upward_shortwave_reflected_min": {
+        "standard_name": "surface_upwelling_shortwave_flux_in_air",
+        "long_name": "reflected shortwave irradiance",
+        "short_name": "swu_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "upward_shortwave_reflected_max": {
+        "standard_name": "surface_upwelling_shortwave_flux_in_air",
+        "long_name": "reflected shortwave irradiance",
+        "short_name": "swu_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximum (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "upward_longwave_avg": {
+        "standard_name": "surface_upwelling_longwave_flux_in_air",
+        "long_name": "reflected longwave irradiance",
+        "short_name": "lwu",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0300"
+    },
+    "upward_longwave_std": {
+        "standard_name": "surface_upwelling_longwave_flux_in_air",
+        "long_name": "reflected longwave irradiance",
+        "short_name": "lwu_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "upward_longwave_min": {
+        "standard_name": "surface_upwelling_longwave_flux_in_air",
+        "long_name": "reflected longwave irradiance",
+        "short_name": "lwu_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "upward_longwave_max": {
+        "standard_name": "surface_upwelling_longwave_flux_in_air",
+        "long_name": "reflected longwave irradiance",
+        "short_name": "swu_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximum (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "net_radiation_avg": {
+        "standard_name": "surface_net_radiation_flux_in_air",
+        "long_name": "net irradiance",
+        "short_name": "net",
+        "units": "W m-2",
+        "cell_methods": "time: mean (interval: 1 minute)",
+        "_groups": "essential, avg",
+        "_logical_record": "LR0300"
+    },
+    "net_radiation_std": {
+        "standard_name": "surface_net_radiation_flux_in_air",
+        "long_name": "net irradiance",
+        "short_name": "net_std",
+        "units": "W m-2",
+        "cell_methods": "time: standard deviation (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "net_radiation_min": {
+        "standard_name": "surface_net_radiation_flux_in_air",
+        "long_name": "net irradiance",
+        "short_name": "net_min",
+        "units": "W m-2",
+        "cell_methods": "time: minimum (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    },
+    "net_radiation_max": {
+        "standard_name": "surface_net_radiation_flux_in_air",
+        "long_name": "net irradiance",
+        "short_name": "net_max",
+        "units": "W m-2",
+        "cell_methods": "time: maximum (interval: 1 minute)",
+        "_logical_record": "LR0300"
+    }
+}

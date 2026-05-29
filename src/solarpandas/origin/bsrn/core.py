@@ -6,6 +6,7 @@ import json
 import multiprocessing as mp
 import re
 from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path
 from typing import Any, Callable, Literal, Sequence, overload
 
@@ -17,7 +18,7 @@ from loguru import logger
 from ...base import SolarDataFrame, read_parquet
 from ...config import get_option
 from . import helpers, lr_parsers
-from .types import LogicalRecordName, Month, Site, Year, validate_type
+from .types import DataLogicalRecordName, LogicalRecordName, Month, Site, Year, validate_type
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
@@ -39,27 +40,28 @@ SUPPORTED_LOGICAL_RECORDS = [
 ]
 
 
-MAPPING_OF_NAMES = {
-    'global_horizontal_avg': {'short_name': 'ghi', 'description': 'global horizontal irradiance', 'unit': 'W m-2'},
-    'global_horizontal_std': {'short_name': 'ghi_std', 'description': 'standard deviation of global horizontal irradiance', 'unit': 'W m-2'},
-    'global_horizontal_min': {'short_name': 'ghi_min', 'description': 'minimum global horizontal irradiance', 'unit': 'W m-2'},
-    'global_horizontal_max': {'short_name': 'ghi_max', 'description': 'maximum global horizontal irradiance', 'unit': 'W m-2'},
-    'direct_normal_avg': {'short_name': 'dni', 'description': 'direct normal irradiance', 'unit': 'W m-2'},
-    'direct_normal_std': {'short_name': 'dni_std', 'description': 'standard deviation of direct normal irradiance', 'unit': 'W m-2'},
-    'direct_normal_min': {'short_name': 'dni_min', 'description': 'minimum direct normal irradiance', 'unit': 'W m-2'},
-    'direct_normal_max': {'short_name': 'dni_max', 'description': 'maximum direct normal irradiance', 'unit': 'W m-2'},
-    'diffuse_horizontal_avg': {'short_name': 'dif', 'description': 'diffuse horizontal irradiance', 'unit': 'W m-2'},
-    'diffuse_horizontal_std': {'short_name': 'dif_std', 'description': 'standard deviation of diffuse horizontal irradiance', 'unit': 'W m-2'},
-    'diffuse_horizontal_min': {'short_name': 'dif_min', 'description': 'minimum diffuse horizontal irradiance', 'unit': 'W m-2'},
-    'diffuse_horizontal_max': {'short_name': 'dif_max', 'description': 'maximum diffuse horizontal irradiance', 'unit': 'W m-2'},
-    'downward_longwave_avg': {'short_name': 'lwd', 'description': 'downward longwave irradiance', 'unit': 'W m-2'},
-    'downward_longwave_std': {'short_name': 'lwd_std', 'description': 'standard deviation of downward longwave irradiance', 'unit': 'W m-2'},
-    'downward_longwave_min': {'short_name': 'lwd_min', 'description': 'minimum downward longwave irradiance', 'unit': 'W m-2'},
-    'downward_longwave_max': {'short_name': 'lwd_max', 'description': 'maximum downward longwave irradiance', 'unit': 'W m-2'},
-    'air_temperature': {'short_name': 'temp', 'description': 'air temperature', 'unit': '°C'},
-    'relative_humidity': {'short_name': 'rh', 'description': 'relative humidity', 'unit': '%'},
-    'atmospheric_pressure': {'short_name': 'pres', 'description': 'atmospheric pressure', 'unit': 'hPa'}
-}
+# MAPPING_OF_NAMES = {
+#     # LR0100
+#     'global_horizontal_avg': {'short_name': 'ghi', 'description': 'global horizontal irradiance', 'unit': 'W m-2'},
+#     'global_horizontal_std': {'short_name': 'ghi_std', 'description': 'standard deviation of global horizontal irradiance', 'unit': 'W m-2'},
+#     'global_horizontal_min': {'short_name': 'ghi_min', 'description': 'minimum global horizontal irradiance', 'unit': 'W m-2'},
+#     'global_horizontal_max': {'short_name': 'ghi_max', 'description': 'maximum global horizontal irradiance', 'unit': 'W m-2'},
+#     'direct_normal_avg': {'short_name': 'dni', 'description': 'direct normal irradiance', 'unit': 'W m-2'},
+#     'direct_normal_std': {'short_name': 'dni_std', 'description': 'standard deviation of direct normal irradiance', 'unit': 'W m-2'},
+#     'direct_normal_min': {'short_name': 'dni_min', 'description': 'minimum direct normal irradiance', 'unit': 'W m-2'},
+#     'direct_normal_max': {'short_name': 'dni_max', 'description': 'maximum direct normal irradiance', 'unit': 'W m-2'},
+#     'diffuse_horizontal_avg': {'short_name': 'dif', 'description': 'diffuse horizontal irradiance', 'unit': 'W m-2'},
+#     'diffuse_horizontal_std': {'short_name': 'dif_std', 'description': 'standard deviation of diffuse horizontal irradiance', 'unit': 'W m-2'},
+#     'diffuse_horizontal_min': {'short_name': 'dif_min', 'description': 'minimum diffuse horizontal irradiance', 'unit': 'W m-2'},
+#     'diffuse_horizontal_max': {'short_name': 'dif_max', 'description': 'maximum diffuse horizontal irradiance', 'unit': 'W m-2'},
+#     'downward_longwave_avg': {'short_name': 'lwd', 'description': 'downward longwave irradiance', 'unit': 'W m-2'},
+#     'downward_longwave_std': {'short_name': 'lwd_std', 'description': 'standard deviation of downward longwave irradiance', 'unit': 'W m-2'},
+#     'downward_longwave_min': {'short_name': 'lwd_min', 'description': 'minimum downward longwave irradiance', 'unit': 'W m-2'},
+#     'downward_longwave_max': {'short_name': 'lwd_max', 'description': 'maximum downward longwave irradiance', 'unit': 'W m-2'},
+#     'air_temperature': {'short_name': 'temp', 'description': 'air temperature', 'unit': '°C'},
+#     'relative_humidity': {'short_name': 'rh', 'description': 'relative humidity', 'unit': '%'},
+#     'atmospheric_pressure': {'short_name': 'pres', 'description': 'atmospheric pressure', 'unit': 'hPa'}
+# }
 
 
 def get_database_path():
@@ -132,31 +134,112 @@ def load_metadata(update: Literal["auto"] | bool = "auto"):
         return json.load(f)
 
 
-def load_data(site: Site, years: Sequence[Year] | Year) -> SolarDataFrame:
+def load_data(
+    site: Site,
+    years: Sequence[Year] | Year,
+    logical_record: Literal["LR0100", "LR0300", "LR0500"] = "LR0100",
+    group: Literal["essential", "avg", "all"] = "essential",
+) -> SolarDataFrame | None:
     """Load BSRN data from a local cache of previously retrieved data files with
        basic (canonical) parameters and time filled and centered."""
 
     site = validate_type(site, Site)
     years = [validate_type(year, Year) for year in np.asarray(years, dtype=int).reshape(-1)]
+    logical_record = validate_type(logical_record, DataLogicalRecordName)
+
+    # For standard_names see: https://cfconventions.org/Data/cf-standard-names/current/build/cf-standard-name-table.html
+    if not (path := files("solarpandas").joinpath("origin/bsrn/cf-metadata.json")).exists():
+        logger.warning("CF metadata file not found. Cannot load metadata.")
+    cf_metadata = json.loads(path.read_text())
+
+    def collect_variables_metadata(columns: list[str]) -> dict:
+        var_metadata ={}
+        for varname in columns:
+            if varname in cf_metadata:
+                values = {key: value for key, value in cf_metadata[varname].items() if not key.startswith("_")}
+                var_metadata[values["short_name"]] = values | {"bsrn_name": varname}
+            else:
+                logger.warning(f"No CF metadata found for variable '{varname}'. Skipping metadata assignment for this variable.")
+                var_metadata[varname] = {
+                    "standard_name": "unknown",
+                    "long_name": "unknown",
+                    "short_name": "unknown",
+                    "units": "unknown",
+                    "bsrn_name": varname,
+                }
+        return var_metadata
+
+    def filter_columns(columns: list[str], group: str) -> list[str]:
+        logger.debug(f"Filtering columns for group '{group}'...")
+
+        group_columns = []
+
+        # 1. Take all group columns in cf-metadata
+        if group.casefold() == "all":
+            group_columns = [cf_metadata.get(column, {}).get("short_name", column) for column in columns]
+        else:
+            for vattrs in cf_metadata.values():
+                if "_groups" not in vattrs:
+                    continue
+                if group in map(str.strip, vattrs["_groups"].split(",")):
+                    group_columns.append(vattrs["short_name"])
+
+            logger.debug(f"Group columns: {group_columns}")
+
+        # 2. Take the intersection with the columns in the data
+        return [col for col in columns if col in group_columns]
 
     db_path = get_database_path() / "cached" / site
     db_path.mkdir(parents=True, exist_ok=True)
 
+    load_bsrn_files = functools.partial(
+        load_data_from_bsrn_files,
+        site=site,
+        months=range(1, 13),
+        filled=True,
+        centered=True,
+        include_metadata=False,
+        extra_records=None if logical_record == "LR0100" else [logical_record])
+
     paths = []
-    kwargs = {"months": range(1, 13), "filled": True, "centered": True, "canonical": True,
-              "include_metadata": False, "extra_records": None}
     for year in years:
-        if not (file_path := db_path / f"{site}_{year}.parquet").exists():
+        if not (file_path := db_path / f"{site}_{year}_{logical_record.lower()}.parquet").exists():
             logger.info(f"cached file {file_path.name} not found. Loading data from BSRN files...")
+
+            # 1. collect the data
+            data = load_bsrn_files(years=year)
+            if logical_record != "LR0100":
+                data = data[1][logical_record]  # logical_record is in [LR0300, LR0500]
+            if data is None:
+                logger.warning(f"no data retrieved for {site=}, {year=}, and {logical_record=}. Skipping...")
+                continue
+
+            # 2. collect variables metadata
+            vmetadata = collect_variables_metadata(data.columns.tolist())
+            data.custom_metadata["variables"] = vmetadata.copy()
+            rename_map = {meta["bsrn_name"]: var for var, meta in vmetadata.items()}
+
+            # 3. update custom_metadata and column names and save to parquet
             (
-                load_data_from_bsrn_files(site=site, years=year, **kwargs)
+                data
+                .rename(columns=rename_map)
                 .rename_axis("times_utc", axis=0)
+                .astype(np.float32)
                 .reset_index()
                 .to_parquet(file_path)
             )
         paths.append(file_path)
 
-    return pd.concat([read_parquet(path) for path in sorted(paths)], axis=0).set_index("times_utc")
+    if not paths:
+        logger.warning(f"no data available for {site=}, {years=}, and {logical_record=}. Returning None.")
+        return None
+
+    unfiltered_data = pd.concat([read_parquet(path) for path in sorted(paths)], axis=0).set_index("times_utc")
+    selected_columns = filter_columns(unfiltered_data.columns.tolist(), group=group)
+    data = unfiltered_data.get(selected_columns)
+    data.custom_metadata["variables"] = {var: meta for var, meta in data.custom_metadata["variables"].items()
+                                         if var in selected_columns}
+    return data
 
 
 def __parse_bsrn_file__(site, year, month, logical_records = None):
@@ -177,7 +260,6 @@ def load_data_from_bsrn_files(
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    canonical: bool = True,
     include_metadata: Literal[False] = False,
     extra_records: None = None,
 ) -> None | SolarDataFrame: ...
@@ -191,7 +273,6 @@ def load_data_from_bsrn_files(
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    canonical: bool = True,
     include_metadata: Literal[True] = True,
     extra_records: None = None,
 ) -> None |tuple[SolarDataFrame, pd.DataFrame]: ...
@@ -205,7 +286,6 @@ def load_data_from_bsrn_files(
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    canonical: bool = True,
     include_metadata: Literal[False] = False,
     extra_records: list[Literal["LR0300", "LR0500"]] = ...,
 ) -> None | tuple[SolarDataFrame, dict[str, SolarDataFrame]]: ...
@@ -219,7 +299,6 @@ def load_data_from_bsrn_files(
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    canonical: bool = True,
     include_metadata: Literal[True] = True,
     extra_records: list[Literal["LR0300", "LR0500"]] = ...,
 ) -> None | tuple[SolarDataFrame, pd.DataFrame, dict[str, SolarDataFrame]]: ...
@@ -231,7 +310,6 @@ def load_data_from_bsrn_files(
     months: Sequence[Month] | Month = range(1, 13),
     filled: bool = True,
     centered: bool = True,
-    canonical: bool = True,
     include_metadata: bool = False,
     extra_records: list[Literal["LR0300", "LR0500"]] | None = None,
 ):
@@ -297,16 +375,19 @@ def load_data_from_bsrn_files(
 
     data = pd.concat([clean_data_retrieval(retr, lr="LR0100") for retr in retrievals], axis=0)
 
-    if canonical:
-        must_variables = ["global_horizontal_avg", "direct_normal_avg", "diffuse_horizontal_avg"]
-        data = data[must_variables].rename(columns={var: MAPPING_OF_NAMES[var]["short_name"] if var in MAPPING_OF_NAMES else var
-                                           for var in must_variables})
+    # if canonical:
+    #     must_variables = ["global_horizontal_avg", "direct_normal_avg", "diffuse_horizontal_avg"]
+    #     logger.debug(f"canonical=True: selecting only the basic variables {must_variables} and renaming them to their short names...")
+    #     data = data[must_variables].rename(
+    #         columns={var: MAPPING_OF_NAMES[var]["short_name"] if var in MAPPING_OF_NAMES else var
+    #         for var in must_variables})
 
     if extra_records is not None:
         extra_data = {}
         for lr in extra_records:
-            this_data = list(filter(None, [clean_data_retrieval(retr, lr=lr) for retr in retrievals]))
-            if not this_data:
+            logger.info(f"processing extra logical record {lr}...")
+            clean_retrievals = [clean_data_retrieval(retr, lr=lr) for retr in retrievals]
+            if not len(this_data := [df for df in clean_retrievals if df is not None]):
                 logger.warning(f"no data retrieved for logical record {lr} in {site=}, {years=}, and {months=}")
                 extra_data[lr] = None
             else:
@@ -328,20 +409,6 @@ def load_data_from_bsrn_files(
                     dense_times = pd.date_range(df.index.min(), df.index.max(), freq="1min", inclusive="both", tz="UTC")
                     extra_data[lr] = df.reindex(dense_times)
 
-    allsite_metadata = load_metadata().get(site)
-    custom_metadata = {key: allsite_metadata[key] for key in allsite_metadata.keys()
-                       if key not in ["latitude", "longitude", "altitude"]}
-    custom_metadata["timestamp_alignment"] = "center" if centered else "start"
-    custom_metadata["acronym"] = site.upper()
-    custom_metadata["network"] = "BSRN"
-
-    data = SolarDataFrame(
-        data,
-        latitude=allsite_metadata["latitude"],
-        longitude=allsite_metadata["longitude"],
-        elevation=allsite_metadata["altitude"],
-        custom_metadata=custom_metadata)
-
     variables = ("surface_type", "topography_type", "latitude", "longitude",
                  "altitude", "horizon_azimuth", "horizon_elevation")
     metadata = [{"year": retr["year"], "month": retr["month"]} |
@@ -360,6 +427,44 @@ def load_data_from_bsrn_files(
     if metadata["altitude"].nunique() > 1:
         logger.warning("the retrieved data contains different altitude values "
                        f"({metadata['altitude'].unique()}). This is not expected.")
+
+    allsite_metadata = load_metadata().get(site)
+
+    custom_metadata = {}
+    custom_metadata["station"] = site.upper()
+    if site.casefold() in allsite_metadata:
+        site_metadata = allsite_metadata[site.casefold()]
+        custom_metadata["location"] = site_metadata.get("station", "unknown")
+        if "location" in site_metadata:
+            province_and_or_country = site_metadata["location"]
+            custom_metadata["location"] = custom_metadata["location"] + f", {province_and_or_country}"
+    custom_metadata["network"] = "BSRN"
+    custom_metadata["source"] = "BSRN FTP server via solarpandas"
+    custom_metadata["institution"] = "Jose A Ruiz-Arias (solarpandas dev) and BSRN data providers"
+    custom_metadata["contact"] = "jararias@uma.es"
+
+    custom_metadata["timestamp_alignment"] = "center" if centered else "start"
+    custom_metadata["surface_type"] = metadata["surface_type"].iloc[-1] if "surface_type" in metadata else "unknown"
+    custom_metadata["topography_type"] = metadata["topography_type"].iloc[-1] if "topography_type" in metadata else "unknown"
+    custom_metadata["horizon_azimuth"] = metadata["horizon_azimuth"].iloc[-1] if "horizon_azimuth" in metadata else "unknown"
+    custom_metadata["horizon_elevation"] = metadata["horizon_elevation"].iloc[-1] if "horizon_elevation" in metadata else "unknown"
+
+    data = SolarDataFrame(
+        data,
+        latitude=allsite_metadata["latitude"],
+        longitude=allsite_metadata["longitude"],
+        elevation=allsite_metadata["altitude"],
+        custom_metadata=custom_metadata)
+
+    if extra_records is not None:
+        for lr, df in extra_data.items():
+            if df is not None:
+                extra_data[lr] = SolarDataFrame(
+                    df,
+                    latitude=allsite_metadata["latitude"],
+                    longitude=allsite_metadata["longitude"],
+                    elevation=allsite_metadata["altitude"],
+                    custom_metadata=custom_metadata)
 
     if not include_metadata:
         if extra_records is None:
