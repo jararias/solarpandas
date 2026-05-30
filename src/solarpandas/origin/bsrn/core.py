@@ -201,7 +201,7 @@ def load_data(
             (
                 data
                 .rename(columns=rename_map)
-                .rename_axis("times_utc", axis=0)
+                .rename_axis("time", axis=0)
                 .astype(np.float32)
                 .reset_index()
                 .to_parquet(file_path)
@@ -212,7 +212,7 @@ def load_data(
         logger.warning(f"no data available for {site=}, {years=}, and {logical_record=}. Returning None.")
         return None
 
-    unfiltered_data = pd.concat([read_parquet(path) for path in sorted(paths)], axis=0).set_index("times_utc")
+    unfiltered_data = pd.concat([read_parquet(path) for path in sorted(paths)], axis=0).set_index("time")
     selected_columns = filter_columns(unfiltered_data.columns.tolist(), group=group)
     data = unfiltered_data.get(selected_columns)
     data.custom_metadata["variables"] = {var: meta for var, meta in data.custom_metadata["variables"].items()
