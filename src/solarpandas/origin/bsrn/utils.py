@@ -1,21 +1,28 @@
 
+"""Low-level utility functions shared by BSRN readers and parsers."""
+
 import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
 
 
 def guess_time_resolution(df_or_series):  # , enable_warnings=True):
-    """
-    The returned value is to cast the dataframe or series to the correct
-    frequency as follows:
+    """Infer sampling step from a datetime index.
 
-        inferred_freq = guess_time_resolution(x)
-        if inferred_freq is None:
-            raise ...
-        x = x.asfreq(inferred_freq)
+    Parameters
+    ----------
+    df_or_series : pandas.DataFrame or pandas.Series
+        Object with datetime-like index.
 
-    The method asfreq set the frequency to the passed value and fills
-    the missings according to the input options (by default, fills with nans)
+    Returns
+    -------
+    pandas.Timedelta or None
+        Inferred time step, or ``None`` when no robust estimate is possible.
+
+    Notes
+    -----
+    First attempts :func:`pandas.infer_freq`; if unavailable, falls back to the
+    minimum observed lag and validates that it can reconstruct the index.
     """
 
     index = df_or_series.index
@@ -34,6 +41,20 @@ def guess_time_resolution(df_or_series):  # , enable_warnings=True):
 
 
 def time_interpolation(data: pd.DataFrame, new_index: pd.DatetimeIndex):
+    """Interpolate data in time over a target index.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        Input data indexed by timestamps.
+    new_index : pandas.DatetimeIndex
+        Target index to interpolate onto.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Interpolated dataframe aligned to ``new_index``.
+    """
     # time interpolation
     extended_index = data.index.append(new_index).sort_values()
     new_data = data.reindex(extended_index).interpolate(method='time', limit=1)

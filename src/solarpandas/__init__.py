@@ -1,4 +1,13 @@
 
+"""Top-level package exports and version metadata for solarpandas.
+
+Examples
+--------
+>>> import solarpandas as sp
+>>> sdf = sp.sample_data.load_carpentras_data()
+>>> sdf.solpos.zenith.head()
+"""
+
 # ruff: noqa: F401
 
 import importlib.metadata

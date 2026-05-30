@@ -1,4 +1,6 @@
 
+"""Accessors to retrieve and manipulate parameter metadata in solar series."""
+
 import pandas as pd
 from loguru import logger
 
@@ -12,6 +14,14 @@ logger = logger.opt(colors=True)
 @pd.api.extensions.register_series_accessor("param")
 @pd.api.extensions.register_dataframe_accessor("param")
 class ParameterAccessor:
+    """Accessor for derived irradiance parameters used in QC workflows.
+
+    Examples
+    --------
+    >>> sdf.param.KT
+    >>> sdf.param.Kn
+    """
+
     def __init__(self, sdf_obj):
         self._sdf = self._validate(sdf_obj)
 
@@ -24,6 +34,13 @@ class ParameterAccessor:
 
     @property
     def KT(self) -> SolarSeries:
+        """Return the clearness index KT derived from ``ghi / eth``.
+
+        Returns
+        -------
+        SolarSeries
+            Daytime-clipped KT values in the range ``[1e-3, 1.35]``.
+        """
         if "ghi" not in self._sdf.columns:
             logger.warning("`ghi` column not found in dataframe. Cannot compute KT.")
             return self._sdf.clone(pd.NA).iloc[:, 0].rename("KT")
@@ -33,6 +50,13 @@ class ParameterAccessor:
 
     @property
     def K(self) -> SolarSeries:
+        """Return diffuse fraction K derived from ``dif / ghi``.
+
+        Returns
+        -------
+        SolarSeries
+            Daytime-clipped K values in the range ``[1e-3, 1.10]``.
+        """
         if "ghi" not in self._sdf.columns:
             logger.warning("`ghi` column not found in dataframe. Cannot compute K.")
             return self._sdf.clone(pd.NA).iloc[:, 0].rename("K")
@@ -45,6 +69,13 @@ class ParameterAccessor:
 
     @property
     def Kn(self) -> SolarSeries:
+        """Return normalized beam index Kn derived from ``dni * cosz / eth``.
+
+        Returns
+        -------
+        SolarSeries
+            Daytime-clipped Kn values in the range ``[1e-3, 1.10]``.
+        """
         if "dni" not in self._sdf.columns:
             logger.warning("`dni` column not found in dataframe. Cannot compute Kn.")
             return self._sdf.clone(pd.NA).iloc[:, 0].rename("Kn")

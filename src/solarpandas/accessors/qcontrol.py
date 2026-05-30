@@ -1,4 +1,6 @@
 
+"""Accessor API to run qcrad quality-control checks on solar data."""
+
 from functools import lru_cache, reduce
 from typing import Literal
 
@@ -23,6 +25,8 @@ logger = logger.opt(colors=True)
 # what HashableDF does. It computes a hash based on the content of the dataframe
 # (including index) and allows us to use it as a key for caching QC results.
 class HashableDF:
+    """Hashable wrapper for dataframe content used by the QC cache."""
+
     def __init__(self, unhashable_df: SolarDataFrame | pd.DataFrame):
         self.dataframe = unhashable_df
         # pd.util.has_pandas_object devuelve un array de hashes para cada fila,
@@ -40,7 +44,7 @@ class HashableDF:
 
 @lru_cache(maxsize=None)
 def _run_cached_qc(hashdf: HashableDF) -> SolarDataFrame:
-    """Compute cached quality control."""
+    """Run all qcrad tests and cache the resulting QC dataframe."""
     logger.debug("performing cached quality control...")
 
     sdf = hashdf.dataframe
@@ -64,31 +68,31 @@ def _run_cached_qc(hashdf: HashableDF) -> SolarDataFrame:
 
 
 def clear_qc_cache() -> None:
-    """Clear the in-memory quality control cache.
+    """Clear the in-memory quality-control cache.
 
-    Call this to free memory or force recomputation on the next access.
-
-    Example::
-
-        import solarpandas as sp
-        sp.clear_qc_cache()
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> sp.clear_qc_cache()
     """
     _run_cached_qc.cache_clear()
     logger.debug("qc cache cleared")
 
 
 def get_qc_cache_info():
-    """Get information about the current state of the quality control cache.
+    """Return cache statistics for quality-control computations.
 
-    Returns:
-        dict: A dictionary containing cache statistics such as hits, misses,
-        and current size.
+    Returns
+    -------
+    dict[str, int | None]
+        Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
 
-    Example::
-
-        import solarpandas as sp
-        info = sp.get_qc_cache_info()
-        print(info)
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> info = sp.get_qc_cache_info()
+    >>> "misses" in info
+    True
     """
     info = _run_cached_qc.cache_info()
     return {
@@ -120,7 +124,14 @@ _COMPONENT_TO_TEST_MAP = {
 
 @pd.api.extensions.register_dataframe_accessor("qc")
 class QualityControlAccessor:
-    """Accessor for computing quality control flags and related results."""
+    """Accessor to run and query qcrad quality-control flags.
+
+    Examples
+    --------
+    >>> qc = sdf.qc
+    >>> qc.tests.columns
+    >>> qc.failed(component="ghi")
+    """
 
     def __init__(self, sdf_obj):
         self._sdf = self._validate(sdf_obj)
@@ -144,18 +155,20 @@ class QualityControlAccessor:
         return obj
 
     def __getitem__(self, key: str) -> SolarSeries:
+        """Return one QC test series by its column name."""
         if key not in self._tests.columns:
             raise KeyError(f"QC test '{key}' not found in results.")
         return self._tests[key]
 
     def __getattr__(self, name: str) -> SolarSeries:
+        """Access QC tests as attributes when names match columns."""
         if name not in self._tests.columns:
             raise AttributeError(f"QC test '{name}' not found in results.")
         return self._tests[name]
 
     @property
     def tests(self) -> SolarDataFrame:
-        """Return the columns of the QC results."""
+        """Return the full QC test result dataframe."""
         return self._tests
 
     def filter(
@@ -166,6 +179,24 @@ class QualityControlAccessor:
         like: str | None = None,
         regex: str | None = None,
     ) -> pd.DataFrame:
+        """Filter QC tests by component, explicit names, or pattern.
+
+        Parameters
+        ----------
+        component : {"ghi", "dni", "dif"} or None, default None
+            Convenience selector for pre-defined test groups.
+        tests : list[str] or None, default None
+            Explicit test names.
+        like : str or None, default None
+            Substring pattern forwarded to ``DataFrame.filter``.
+        regex : str or None, default None
+            Regex pattern forwarded to ``DataFrame.filter``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Subset of QC test columns.
+        """
 
         if component is not None:
             if component.casefold() not in ("ghi", "dni", "dif"):
@@ -179,6 +210,8 @@ class QualityControlAccessor:
             tests = reduce(lambda x, y: x + y, _COMPONENT_TO_TEST_MAP.get(component).values())
             logger.debug(f"Tests for component '{component}': {tests}")
 
+        if tests is None and like is None and regex is None:
+            return self._tests
         tests = self._tests.filter(items=tests, like=like, regex=regex, axis=1)
         logger.info(f"Filtered QC tests: {tests.columns.tolist()}")
         return tests
@@ -191,6 +224,7 @@ class QualityControlAccessor:
         like: str | None = None,
         regex: str | None = None,
     ) -> pd.Series:
+        """Return a boolean mask where at least one selected test fails."""
 
         return (
             self.filter(component, tests=tests, like=like, regex=regex)
@@ -206,6 +240,7 @@ class QualityControlAccessor:
         like: str | None = None,
         regex: str | None = None,
     ) -> pd.Series:
+        """Return a boolean mask where all selected tests pass or are neutral."""
 
         return (
             self.filter(component, tests=tests, like=like, regex=regex)
@@ -222,6 +257,13 @@ class QualityControlAccessor:
         regex: str | None = None,
         **kwargs
     ) -> pd.DataFrame:
+        """Mask original values where selected QC tests fail.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Copy of the original data with failed timestamps masked.
+        """
 
         failed = self.failed(component, tests=tests, like=like, regex=regex)
 
@@ -242,6 +284,18 @@ class QualityControlAccessor:
         combined: bool = False,
         **kwargs
     ) -> plt.Figure:
+        """Render a QC pass/fail heatmap over time.
+
+        Parameters
+        ----------
+        combined : bool, default False
+            If ``True``, encodes failure severity by component groups.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure containing the heatmap.
+        """
 
         if not combined:
             series = self.passed(component, tests=tests, like=like, regex=regex).astype(np.int8)

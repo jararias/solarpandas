@@ -1,4 +1,6 @@
 
+"""Pandas accessors and caches for clear-sky irradiance estimations."""
+
 from functools import lru_cache
 from typing import Literal
 
@@ -21,7 +23,7 @@ def _compute_cached_clearsky(
     longitude: float,
     atmosphere: str,
     model: str):
-    """Compute cached clearsky irradiance."""
+    """Compute clear-sky irradiance and cache it by site and timestamps."""
     logger.debug(f"evaluating clearsky irradiance with `{model}` model "
                  f"and `{atmosphere}` atmosphere...")
     atmos_obj = getattr(spartasolar.atmosphere, atmosphere)
@@ -33,29 +35,30 @@ def _compute_cached_clearsky(
         return atmos_obj.at_sites(*args).compute(model)
 
 def clear_clearsky_cache() -> None:
-    """Clear the in-memory clearsky irradiance cache.
+    """Clear the in-memory clear-sky irradiance cache.
 
-    Call this to free memory or force recomputation on the next access.
-
-    Example::
-
-        import solarpandas as sp
-        sp.clear_clearsky_cache()
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> sp.clear_clearsky_cache()
     """
     _compute_cached_clearsky.cache_clear()
     logger.debug("clearsky cache cleared")
 
 def get_clearsky_cache_info():
-    """Get information about the current state of the clearsky cache.
+    """Return cache statistics for clear-sky computations.
 
-    Returns:
-        dict: A dictionary containing cache statistics such as hits, misses, and current size.
+    Returns
+    -------
+    dict[str, int | None]
+        Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
 
-    Example::
-
-        import solarpandas as sp
-        info = sp.get_clearsky_cache_info()
-        print(info)
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> info = sp.get_clearsky_cache_info()
+    >>> "current_size" in info
+    True
     """
     info = _compute_cached_clearsky.cache_info()
     return {
@@ -127,21 +130,17 @@ class BaseClearskyIrradianceAccessor:
 @pd.api.extensions.register_series_accessor("clearsky")
 @pd.api.extensions.register_dataframe_accessor("clearsky")
 class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
-    """General accessor for computing clearsky irradiance.
-    
-    By default, it caches results using the specified model and atmosphere in
-    config options (`clearsky.model` and `clearsky.atmosphere`).
+    """Accessor for clear-sky irradiance variables (GHI, DNI, DIF, CSI).
 
-    For a one-off calculations, the ``compute`` method allows bypassing the
-    cache and specifying the model and atmosphere directly.
-    
-    Example:
+    Notes
+    -----
+    Cached properties use configuration options ``clearsky.model`` and
+    ``clearsky.atmosphere``.
 
-        # compute with the default model and atmosphere from config options
-        data.clearsky.ghi # uses cached results
-
-        # compute with a specific model and atmosphere, bypassing the cache
-        data.clearsky.compute("crs_soda", "SPARTA").ghi
+    Examples
+    --------
+    >>> sdf.clearsky.ghi
+    >>> sdf.clearsky.compute("crs_soda", "SPARTA").dni
     """
 
     def compute(
@@ -149,6 +148,20 @@ class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
         atmosphere: Literal["merra2_daily", "merra2_gee", "merra2_lta", "crs_soda", "custom"],
         model: str = "SPARTA"
     ):
+        """Compute clear-sky irradiance once without using cache.
+
+        Parameters
+        ----------
+        atmosphere : {"merra2_daily", "merra2_gee", "merra2_lta", "crs_soda", "custom"}
+            Atmosphere dataset source.
+        model : str, default "SPARTA"
+            Irradiance model name accepted by the selected atmosphere backend.
+
+        Returns
+        -------
+        Any
+            Xarray-like object returned by ``spartasolar``.
+        """
         logger.debug(f"evaluating clearsky with `{model}` model and `{atmosphere}` atmosphere...")
         if not hasattr(spartasolar.atmosphere, atmosphere):
             raise ValueError(f"invalid clearsky atmosphere `{atmosphere}`")
@@ -166,6 +179,14 @@ class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
 @pd.api.extensions.register_series_accessor("lta")
 @pd.api.extensions.register_dataframe_accessor("lta")
 class LTAIrradianceAccessor(BaseClearskyIrradianceAccessor):
+    """Accessor for long-term-average clear-sky irradiance products.
+
+    Examples
+    --------
+    >>> sdf.lta.ghi
+    >>> sdf.lta.dni
+    """
+
     def __init__(self, sdf_obj):
         self._sdf = self._validate(sdf_obj)
         self._model = get_option("clearsky.model", default="SPARTA")
@@ -177,6 +198,14 @@ class LTAIrradianceAccessor(BaseClearskyIrradianceAccessor):
 @pd.api.extensions.register_series_accessor("cda")
 @pd.api.extensions.register_dataframe_accessor("cda")
 class CDAIrradianceAccessor(BaseClearskyIrradianceAccessor):
+    """Accessor for clear-day-analysis clear-sky irradiance products.
+
+    Examples
+    --------
+    >>> sdf.cda.ghi
+    >>> sdf.cda.csi
+    """
+
     def __init__(self, sdf_obj):
         self._sdf = self._validate(sdf_obj)
         self._model = get_option("clearsky.model", default="SPARTA")

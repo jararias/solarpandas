@@ -1,4 +1,6 @@
 
+"""Public accessor classes and cache helpers exposed by solarpandas."""
+
 # ruff: noqa: F401
 
 from .clearsky import (

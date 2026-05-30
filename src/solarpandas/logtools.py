@@ -1,10 +1,24 @@
 
+"""Logging format helpers used by solarpandas logging setup."""
+
 import sys
 
 from loguru import logger
 
 
 def get_message_format(with_mp: bool = False):
+    """Build a loguru format callable with level-aware styling.
+
+    Parameters
+    ----------
+    with_mp : bool, default False
+        If ``True``, include process name to help identify multi-process logs.
+
+    Returns
+    -------
+    Callable[[dict], str]
+        Formatter callable compatible with ``logger.add(format=...)``.
+    """
     def level_aware_format(record):
         # see: https://loguru.readthedocs.io/en/stable/api/logger.html#record
         level_icon = "<lvl>{level.icon} {level:<7}</lvl>"
@@ -27,6 +41,19 @@ def get_message_format(with_mp: bool = False):
     return level_aware_format
 
 def filtrar_logs(filtros: list[str] | None = None):
+    """Create a filter function to suppress noisy namespaces.
+
+    Parameters
+    ----------
+    filtros : list[str] or None, default None
+        Module name prefixes to filter. Matching records are only kept when
+        severity is ERROR or higher.
+
+    Returns
+    -------
+    Callable[[dict], bool]
+        Predicate suitable for ``logger.add(filter=...)``.
+    """
     def filtro(record):
         if any([record["name"].startswith(name) for name in filtros or []]):
             return record["level"].no >= logger.level("ERROR").no  # only pass if is an ERROR or more severe
@@ -34,6 +61,28 @@ def filtrar_logs(filtros: list[str] | None = None):
     return filtro
 
 def enable_logger(name: str | None = None, with_mp: bool = False, filtros: list[str] | None = None, **kwargs):
+    """Configure and enable package logging.
+
+    Parameters
+    ----------
+    name : str or None, default None
+        Logger namespace to enable explicitly. If ``None``, enables ``__main__``.
+    with_mp : bool, default False
+        Enable multi-process-friendly logging options.
+    filtros : list[str] or None, default None
+        Prefixes to filter via :func:`filtrar_logs`.
+    **kwargs : Any
+        Extra keyword arguments forwarded to ``logger.add``.
+
+    Notes
+    -----
+    Existing handlers are removed before installing the new one.
+
+    Examples
+    --------
+    >>> from solarpandas.logtools import enable_logger
+    >>> enable_logger("solarpandas", level="INFO")
+    """
     global logger
     logger.remove()  # Remove the default handler.
     default_kwargs = dict(
@@ -50,4 +99,5 @@ def enable_logger(name: str | None = None, with_mp: bool = False, filtros: list[
     logger.enable("solarpandas")
 
 def disable_logger():
+    """Disable logging for the solarpandas namespace."""
     logger.disable("solarpandas")

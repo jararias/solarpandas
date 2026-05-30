@@ -1,4 +1,6 @@
 
+"""Annotated type definitions used by the BSRN origin interface."""
+
 from typing import Annotated
 
 from ...validate import ValidaRegex, ValidaRange, validate_type  # noqa: F401

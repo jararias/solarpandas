@@ -30,7 +30,14 @@ dev = [
     "ipython>=9.13.0",
     "matplotlib>=3.10.9",
     "pyqt6>=6.11.0",
+    "pytest>=8.0.0",
     "ruff>=0.15.12",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "network: mark test as requiring network access",
 ]
 
 [tool.uv.build-backend]

@@ -24,7 +24,7 @@ logger = logger.opt(colors=True)
 
 
 def test_ghi(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that GHI is within extremely rare limits."""
+    """Evaluate extremely-rare-limits test for GHI."""
 
     # check that I have what I need
     if "ghi" not in sdf.columns:
@@ -45,6 +45,7 @@ def test_ghi(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_ghi(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot GHI ERL limits and flagged points against solar zenith angle."""
 
     sdf_ = sdf.assign(
         zenith=sdf.solpos.zenith,
@@ -56,7 +57,7 @@ def plot_test_ghi(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
 
 
 def test_dif(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that DIF is within extremely rare limits."""
+    """Evaluate extremely-rare-limits test for DIF."""
 
     # check that I have what I need
     if "dif" not in sdf.columns:
@@ -77,7 +78,7 @@ def test_dif(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_dif(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
-    """Plot the DIF test limits and results for visual inspection."""
+    """Plot DIF ERL limits and flagged points against solar zenith angle."""
 
     sdf_ = sdf.assign(
         zenith=sdf.solpos.zenith,
@@ -89,7 +90,7 @@ def plot_test_dif(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
 
 
 def test_dni(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that DNI is within extremely rare limits."""
+    """Evaluate extremely-rare-limits test for DNI."""
 
     # check that I have what I need
     if "dni" not in sdf.columns:
@@ -110,7 +111,7 @@ def test_dni(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_dni(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
-    """Plot the DNI test limits and results for visual inspection."""
+    """Plot DNI ERL limits and flagged points against solar zenith angle."""
 
     sdf_ = sdf.assign(
         zenith=sdf.solpos.zenith,
@@ -123,7 +124,7 @@ def plot_test_dni(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
 
 
 def plot_test(column: str, sdf: SolarDataFrame, **kwargs) -> plt.Axes:
-    """Plot the `column` test limits and results for visual inspection."""
+    """Render a standard ERL diagnostic density plot for one irradiance column."""
 
     plt.style.use("solarpandas-qc")
     if "rc" in kwargs:

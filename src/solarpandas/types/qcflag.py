@@ -1,3 +1,5 @@
+"""Pandas extension dtype and array implementation for quality-control flags."""
+
 from __future__ import annotations
 
 from enum import IntEnum
@@ -16,6 +18,23 @@ logger = logger.opt(colors=True)
 
 
 class QCFlagEnum(IntEnum):
+    """Enumeration of QC flag semantics used across the package.
+
+    Values
+    ------
+    FAILED : -1
+        Measurement failed the corresponding QC test.
+    NOT_VERIFIABLE : 0
+        Measurement could not be verified by the test.
+    PASSED : 1
+        Measurement passed the corresponding QC test.
+
+    Examples
+    --------
+    >>> QCFlagEnum.FAILED.value
+    -1
+    """
+
     FAILED = np.int8(-1)
     NOT_VERIFIABLE = np.int8(0)
     PASSED = np.int8(1)
@@ -36,6 +55,11 @@ class QCFlagDtype(ExtensionDtype):
 
     Valid values: -1 (fail), 0 (not verifiable), 1 (passed).
     NA is represented internally as -128.
+
+    Examples
+    --------
+    >>> str(QCFlagDtype())
+    'QCFlagDtype()'
     """
 
     name = "qcflag"
@@ -63,6 +87,12 @@ class QCFlagArray(ExtensionArray):
         True where the flag value is 1.
     not_verifiable : ndarray[bool]
         True where the flag value is 0.
+
+    Examples
+    --------
+    >>> arr = QCFlagArray._from_sequence([-1, 0, 1, None])
+    >>> arr.fails.any()
+    True
     """
 
     dtype = QCFlagDtype()

@@ -1,4 +1,6 @@
 
+"""Pandas accessors and caching helpers for solar-position computations."""
+
 from functools import lru_cache
 from typing import Literal
 
@@ -23,7 +25,7 @@ def _compute_cached_solpos(
     refraction: bool,
     engine: str
 ) -> sunwhere._base.Sunpos:
-    """Compute cached solar position."""
+    """Compute solar position and cache the result for repeated queries."""
     logger.debug(f"evaluating solar position with `{algorithm}` algorithm, "
                  f"refraction={refraction}, engine=`{engine}`...")
     index = pd.to_datetime(np.frombuffer(times, dtype="datetime64[ns]"), utc=True)
@@ -32,30 +34,34 @@ def _compute_cached_solpos(
     return sunwhere.sites(*args, **kwargs)
 
 def clear_solpos_cache() -> None:
-    """Clear the in-memory solar position cache.
+    """Clear the in-memory solar-position cache.
 
-    Call this to free memory or force recomputation on the next access.
+    Notes
+    -----
+    Use this when changing model options and forcing a full recomputation.
 
-    Example::
-
-        import solarpandas as sp
-        sp.clear_solpos_cache()
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> sp.clear_solpos_cache()
     """
     _compute_cached_solpos.cache_clear()
     logger.debug("solpos cache cleared")
 
 def get_solpos_cache_info():
-    """Get information about the current state of the solar position cache.
+    """Return cache statistics for solar-position computations.
 
-    Returns:
-        dict: A dictionary containing cache statistics such as hits, misses,
-        and current size.
+    Returns
+    -------
+    dict[str, int | None]
+        Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
 
-    Example::
-
-        import solarpandas as sp
-        info = sp.get_solpos_cache_info()
-        print(info)
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> info = sp.get_solpos_cache_info()
+    >>> "hits" in info
+    True
     """
     info = _compute_cached_solpos.cache_info()
     return {
@@ -69,22 +75,17 @@ def get_solpos_cache_info():
 @pd.api.extensions.register_series_accessor("solpos")
 @pd.api.extensions.register_dataframe_accessor("solpos")
 class SolarPositionAccessor:
-    """Accessor for computing solar position.
-    
-    By default, it caches results using the specified algorithm, refraction, and
-    engine in config options (`solar-position.algorithm`, `solar-position.refraction`,
-    and `solar-position.engine`).
+    """Accessor to compute and expose solar-position variables.
 
-    For a one-off calculations, the ``compute`` method allows bypassing the cache
-    and specifying the algorithm, refraction, and engine directly.
-    
-    Example:
+    Notes
+    -----
+    Cached properties use configuration options under ``solar-position``:
+    ``algorithm``, ``refraction`` and ``engine``.
 
-        # compute with the default algorithm, refraction, and engine from config options
-        data.solpos.zenith # uses cached results
-
-        # compute with a specific algorithm, refraction, and engine, bypassing the cache
-        data.solpos.compute("psa", True, "numexpr").zenith
+    Examples
+    --------
+    >>> sdf.solpos.zenith  # cached path using config defaults
+    >>> sdf.solpos.compute("psa", True, "numexpr").azimuth  # one-off computation
     """
 
     def __init__(self, sdf_obj):
@@ -107,6 +108,22 @@ class SolarPositionAccessor:
         refraction: bool = True,
         engine: str = "numexpr"
     ) -> sunwhere._base.Sunpos:
+        """Compute solar position without using the accessor cache.
+
+        Parameters
+        ----------
+        algorithm : str, default "psa"
+            Solar-position algorithm accepted by ``sunwhere``.
+        refraction : bool, default True
+            Whether to include atmospheric refraction corrections.
+        engine : str, default "numexpr"
+            Backend engine used by ``sunwhere``.
+
+        Returns
+        -------
+        sunwhere._base.Sunpos
+            ``sunwhere`` result object containing angular and temporal variables.
+        """
         logger.debug(f"evaluating solar position with `{algorithm}` algorithm, "
                      f"refraction={refraction}, engine=`{engine}`...")
         args = (self._sdf.index, self._sdf.latitude, self._sdf.longitude)
@@ -227,6 +244,18 @@ class SolarPositionAccessor:
         return self.local_solar_time
 
     def sunrise(self, units: Literal["rad", "deg", "tst", "lst", "utc"] = "utc"):
+        """Return sunrise in the selected coordinate system.
+
+        Parameters
+        ----------
+        units : {"rad", "deg", "tst", "lst", "utc"}, default "utc"
+            Units or time reference used by ``sunwhere``.
+
+        Returns
+        -------
+        SolarSeries
+            Sunrise values aligned to the dataframe index.
+        """
         sr = self._get_cached_solpos("sunrise", units={"lst": "utc"}.get(units, units))
         if units == "lst":
             # convert from UTC to LST
@@ -235,6 +264,18 @@ class SolarPositionAccessor:
         return sr
 
     def sunset(self, units: Literal["rad", "deg", "tst", "lst", "utc"] = "utc"):
+        """Return sunset in the selected coordinate system.
+
+        Parameters
+        ----------
+        units : {"rad", "deg", "tst", "lst", "utc"}, default "utc"
+            Units or time reference used by ``sunwhere``.
+
+        Returns
+        -------
+        SolarSeries
+            Sunset values aligned to the dataframe index.
+        """
         ss = self._get_cached_solpos("sunset", units={"lst": "utc"}.get(units, units))
         if units == "lst":
             # convert from UTC to LST

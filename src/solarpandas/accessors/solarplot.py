@@ -1,4 +1,6 @@
 
+"""Plotting utilities and scales for solar data visualization."""
+
 from typing import Callable, Literal
 
 import matplotlib as mpl
@@ -151,6 +153,14 @@ if "diurnal" not in mpl.scale.get_scale_names():
 @pd.api.extensions.register_series_accessor("solarplot")
 @pd.api.extensions.register_dataframe_accessor("solarplot")
 class SolarPlotAccessor:
+    """Accessor with high-level plotting methods for solar time series.
+
+    Examples
+    --------
+    >>> sdf.solarplot.diurnal(column="ghi")
+    >>> sdf.solarplot.heatmap(column="ghi", time_ref="tst")
+    """
+
     def __init__(self, sdf_obj):
         self._sdf = self._validate(sdf_obj)
 
@@ -169,6 +179,24 @@ class SolarPlotAccessor:
         formatter=None,
         **kwargs
     ) -> plt.Figure:
+        """Plot one or more variables on a compressed daytime-only timeline.
+
+        Parameters
+        ----------
+        column : str, list[str], tuple[str, ...], or None, default None
+            Column(s) to plot for dataframe inputs. Ignored for series inputs.
+        max_sza : float, default 95.0
+            Maximum solar zenith angle used to define daytime samples.
+        locator, formatter : Any, optional
+            Optional matplotlib date locator/formatter for x-axis ticks.
+        **kwargs : Any
+            Extra keyword arguments forwarded to ``Axes.plot``.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure containing the diurnal plot.
+        """
 
         if isinstance(self._sdf, SolarSeries):
             if column is not None:
@@ -226,6 +254,30 @@ class SolarPlotAccessor:
         aggfunc: str | Callable = "mean",
         **kwargs
     ) -> plt.Figure:
+        """Render a date-time heatmap for a selected variable.
+
+        Parameters
+        ----------
+        column : str or None, default None
+            Column to plot for dataframe inputs. Defaults to first column.
+        time_ref : {"lst", "tst", "lat", "utc"}, default "tst"
+            Time reference used for the y-axis.
+        max_sza : float or None, default 90.0
+            Nighttime masking threshold. Use ``None`` to disable masking.
+        colorbar : bool, default True
+            Whether to add a colorbar.
+        twilight_line : bool, default False
+            Whether to overlay sunrise and sunset curves.
+        aggfunc : str or Callable, default "mean"
+            Aggregation function used in the date-time pivot table.
+        **kwargs : Any
+            Extra keyword arguments forwarded to ``Axes.pcolormesh``.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure containing the heatmap.
+        """
 
         MAP_OF_YLABELS = {
             "lst": "Local Solar Time",

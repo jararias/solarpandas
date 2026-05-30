@@ -1,4 +1,6 @@
 
+"""Quality-control tools to detect and analyze time-shift issues."""
+
 import datashader as ds
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -11,6 +13,29 @@ logger = logger.opt(colors=True)
 
 
 def check_timeshift(sdf: SolarDataFrame, column: str = "auto", **kwargs) -> plt.Figure:
+    """Visual check for AM/PM asymmetry to detect possible timestamp shifts.
+
+    Parameters
+    ----------
+    sdf : SolarDataFrame
+        Input data containing at least ``dni`` or ``ghi``.
+    column : str, default "auto"
+        Variable to analyze. ``"auto"`` prefers ``dni`` and falls back to ``ghi``.
+    **kwargs : Any
+        Optional plotting arguments. ``ax`` and ``rc`` are supported.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Figure with AM and PM density maps versus solar zenith angle.
+
+    Examples
+    --------
+    >>> from solarpandas.qcontrol import check_timeshift
+    >>> fig = check_timeshift(sdf, column="dni")
+    >>> fig is not None
+    True
+    """
 
     if column == "auto":
         if (column := "dni") not in sdf.columns:

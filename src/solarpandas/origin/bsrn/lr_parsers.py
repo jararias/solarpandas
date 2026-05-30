@@ -1,4 +1,6 @@
 
+"""Parsers for BSRN logical records and fixed-width monthly files."""
+
 import functools
 import re
 from io import StringIO
@@ -15,6 +17,18 @@ logger = logger.opt(colors=True)
 
 
 def fortran_pattern_to_colspecs(fortran_pattern: str):
+    """Convert a compact Fortran-like pattern into fixed-width colspecs.
+
+    Parameters
+    ----------
+    fortran_pattern : str
+        Pattern expression using ``A``, ``I``, ``F`` and ``X`` tokens.
+
+    Returns
+    -------
+    tuple[list[tuple[int, int]], list[Callable]]
+        Parsed column boundaries and per-column formatter callables.
+    """
 
     def safe_split(pattern: str) -> list[str]:
         # split by comma, but ignore commas inside parentheses
@@ -80,6 +94,28 @@ def parse(
     on_error: Literal["raise", "ignore"] = "raise",
     default: Any = "undefined"
 ) -> list[Any]:
+    """Parse one fixed-width text line into typed values.
+
+    Parameters
+    ----------
+    txt : str
+        Input line to parse.
+    fortran_pattern : str or None, optional
+        Fortran-like pattern used to infer ``colspecs``.
+    colspecs : list[tuple[int, int]] or None, optional
+        Explicit fixed-width column boundaries.
+    formatter : Callable or list[Callable] or None, optional
+        Value formatter(s) for extracted fields.
+    on_error : {"raise", "ignore"}, default "raise"
+        Error strategy while parsing or formatting values.
+    default : Any, default "undefined"
+        Fallback value used when ``on_error='ignore'``.
+
+    Returns
+    -------
+    list[Any]
+        Parsed and formatted values.
+    """
 
     width = max(len("line being parsed"), len("fortran pattern"), len("colspecs"), len("formatter"))
     logger.debug(f"{'line being parsed':>{width}}: <green>{txt}</green>")
@@ -124,6 +160,7 @@ def parse(
 
 
 def parse_logical_record_0001(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0001 block with basic station and quantity metadata."""
     elements = {}
     ilines = iter(lines)
 
@@ -141,6 +178,7 @@ def parse_logical_record_0001(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0002(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0002 block with scientist and deputy contact information."""
     elements = {}
     ilines = iter(lines)
 
@@ -178,10 +216,12 @@ def parse_logical_record_0002(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0003(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0003 free-text message block."""
     return {'message': parse(lines[0], fortran_pattern="A80")[0]}
 
 
 def parse_logical_record_0004(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0004 station site metadata and horizon profile."""
     elements = {}
     ilines = iter(lines)
 
@@ -220,6 +260,7 @@ def parse_logical_record_0004(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0005(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0005 radiosonde instrumentation metadata."""
     elements = {}
     ilines = iter(lines)
 
@@ -240,6 +281,7 @@ def parse_logical_record_0005(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0006(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0006 ozone instrumentation metadata."""
     elements = {}
     ilines = iter(lines)
 
@@ -258,6 +300,7 @@ def parse_logical_record_0006(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0007(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0007 station history metadata block."""
     elements = {}
     ilines = iter(lines)
 
@@ -292,6 +335,7 @@ def parse_logical_record_0007(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0008(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0008 radiation instrument calibration metadata."""
     elements = {}
     ilines = iter(lines)
 
@@ -353,6 +397,7 @@ def parse_logical_record_0008(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0009(lines: list[str], **kwargs) -> dict[str, Any]:
+    """Parse LR0009 quantity-to-instrument assignment metadata."""
     elements = {}
     ilines = iter(lines)
 
@@ -376,7 +421,7 @@ def parse_logical_record_0009(lines: list[str], **kwargs) -> dict[str, Any]:
 
 
 def parse_logical_record_0100(lines: list[str], **kwargs) -> pd.DataFrame:
-    """Parser for the logical record 0100, which contains the basic measurements."""
+    """Parse LR0100 block with basic radiation and meteorological measurements."""
 
     def warn(msg: str, day: int | None = None):
         header = ""
@@ -455,7 +500,7 @@ def parse_logical_record_0100(lines: list[str], **kwargs) -> pd.DataFrame:
   
 
 def parse_logical_record_0300(lines: list[str], **kwargs) -> pd.DataFrame:
-    """Parser for the logical record 0300, which contains the basic measurements."""
+    """Parse LR0300 block with reflected, upward and net radiation measurements."""
 
     def warn(msg: str, day: int | None = None):
         logger.warning(msg if day is None else f"<red>LR0300 @ day{day}</red>: {msg}")
@@ -520,7 +565,7 @@ def parse_logical_record_0300(lines: list[str], **kwargs) -> pd.DataFrame:
 
 
 def parse_logical_record_0500(lines: list[str], **kwargs) -> pd.DataFrame:
-    """Parser for the logical record 0500, which contains the basic measurements."""
+    """Parse LR0500 block with UV radiation measurements."""
 
     def warn(msg: str, day: int | None = None):
         logger.warning(msg if day is None else f"<red>LR0500 @ day{day}</red>: {msg}")

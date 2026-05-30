@@ -1,3 +1,5 @@
+"""Accessor methods for working with quality-control flag series and plots."""
+
 import inspect
 
 import pandas as pd
@@ -24,6 +26,11 @@ class QCFlagAccessor:
     s.flag.fails           # boolean Series: True where value is -1
     s.flag.passes          # boolean Series: True where value is 1
     s.flag.not_verifiable  # boolean Series: True where value is 0
+
+    Examples
+    --------
+    >>> counts = qc_series.flag.counts()
+    >>> qc_series.flag.heatmap()
     """
 
     def __init__(self, series: pd.Series | SolarSeries) -> None:
@@ -35,6 +42,7 @@ class QCFlagAccessor:
 
     @property
     def fails(self) -> pd.Series | SolarSeries:
+        """Boolean mask where QC flag equals ``-1`` (failed)."""
         flag = self._series.array.fails.astype(bool)
         if isinstance(self._series, SolarSeries):
             return self._series.clone(other=flag).rename(self._series.name)
@@ -42,6 +50,7 @@ class QCFlagAccessor:
 
     @property
     def passes(self) -> pd.Series | SolarSeries:
+        """Boolean mask where QC flag equals ``1`` (passed)."""
         flag = self._series.array.passes.astype(bool)
         if isinstance(self._series, SolarSeries):
             return self._series.clone(other=flag).rename(self._series.name)
@@ -49,13 +58,28 @@ class QCFlagAccessor:
 
     @property
     def not_verifiable(self) -> pd.Series | SolarSeries:
+        """Boolean mask where QC flag equals ``0`` (not verifiable)."""
         flag = self._series.array.not_verifiable.astype(bool)
         if isinstance(self._series, SolarSeries):
             return self._series.clone(other=flag).rename(self._series.name)
         return pd.Series(flag, index=self._series.index, name=self._series.name)
 
     def counts(self, skip_nighttime: bool = True, **kwargs) -> pd.Series:
-        """Count occurrences of each flag value (-1, 0, 1, NA)."""
+        """Count occurrences of each QC flag category.
+
+        Parameters
+        ----------
+        skip_nighttime : bool, default True
+            If ``True`` and input is ``SolarSeries``, counts only daytime points
+            (solar zenith angle below 90 degrees).
+        **kwargs : Any
+            Extra keyword arguments passed to ``Series.value_counts``.
+
+        Returns
+        -------
+        pandas.Series
+            Counts indexed by flag names.
+        """
         series = self._series
         if skip_nighttime:
             if not isinstance(series, SolarSeries):
@@ -69,13 +93,13 @@ class QCFlagAccessor:
         )
 
     def pieplot(self, skip_nighttime: bool = True, **kwargs) -> None:
-        """Plot a pie chart of the flag value distribution."""
+        """Plot a pie chart with the QC flag distribution."""
         counts = self.counts(skip_nighttime=skip_nighttime, normalize=True)
         defaults = {"labels": counts.index, "autopct": "%1.1f%%", "startangle": 90}
         counts.plot.pie(**(defaults | kwargs))
 
     def plot(self, sdf: SolarDataFrame, **kwargs) -> None:
-        """Plot the original data colored by flag values for visual inspection."""
+        """Plot QC results using the test-specific plotting function."""
         if not isinstance(self._series, SolarSeries):
             logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
             return
@@ -95,7 +119,7 @@ class QCFlagAccessor:
         return plot_func(sdf, self._series)
 
     def heatmap(self) -> None:
-        """Plot a date-time map of the original data colored by flag values for visual inspection."""
+        """Plot a date-time heatmap of QC flag values."""
         if not isinstance(self._series, SolarSeries):
             logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
             return

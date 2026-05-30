@@ -1,9 +1,23 @@
 
+"""Registration helpers and constants for bundled Matplotlib styles."""
+
 from importlib.resources import files
 
 import matplotlib.pyplot as plt
 
 def register():
+    """Register bundled Matplotlib styles under the ``solarpandas-*`` prefix.
+
+    Notes
+    -----
+    Calling this function multiple times is safe; style keys are overwritten
+    with the same values.
+
+    Examples
+    --------
+    >>> from solarpandas.mplstyles import register
+    >>> register()
+    """
     path = files("solarpandas.mplstyles")
     styles = plt.style.core.read_style_directory(path)
     for key, value in styles.items():

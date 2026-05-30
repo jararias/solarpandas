@@ -1,4 +1,4 @@
-r"""Configuration Management for solarpandas.
+r"""Configuration management for solarpandas.
 
 This module handles the persistent storage and retrieval of user settings using 
 a TOML configuration file located in the standard user configuration directory.
@@ -21,7 +21,8 @@ Configuration File Location:
     - macOS: ~/Library/Application Support/solarpandas/config.toml
     - Windows: C:\\Users\\<user>\\AppData\\Local\\solarpandas\\config.toml
 
-Examples:
+Examples
+--------
     >>> from solarpandas.config import get_config_path, get_option, set_option
     
     >>> # Get configuration file path
@@ -38,11 +39,6 @@ Examples:
     >>> # Get data directory (returns Path object)
     >>> data_dir = get_option('merra2_daily.data_dir')
 
-See Also:
-    - get_config_path(): Get path to configuration file
-    - get_option(): Retrieve configuration value
-    - set_option(): Modify configuration (session only)
-    - show_config(): Display all current settings
 """
 
 # HOW DOES THIS CONFIG WORK? WHEN THE FLOW PASS THROUGH, IT CHECKS IF THE CONFIG
@@ -81,16 +77,19 @@ server = "ftp.bsrn.awi.de"
 """
 
 def get_config_path() -> Path:
-    """Get the path to the user's configuration file.
+    """Return the path of the user configuration file.
 
-    Returns:
-        Path: The absolute path to `config.toml` within the standard 
-            system-specific user configuration directory.
+    Returns
+    -------
+    pathlib.Path
+        Absolute path to ``config.toml`` in the platform-specific user
+        configuration directory.
     """
     path = platformdirs.user_config_path(appname="solarpandas", ensure_exists=True)
     return path / "config.toml"
 
 def _init_config_file():
+    """Create the default config file from the built-in TOML template."""
     with get_config_path().open(mode="w") as f:
         f.write(_DEFAULT_CONFIG_TOML_)
     logger.success(f"user's config file initialized at <blue>{get_config_path()}</blue>")
@@ -101,9 +100,10 @@ def _read_config_options() -> dict[str, Any]:
     If the configuration file does not exist, it initializes it with 
     default placeholder values.
 
-    Returns:
-        dict[str, Any]: A dictionary containing the configuration keys 
-            and their values parsed from the TOML file.
+    Returns
+    -------
+    dict[str, Any]
+        Parsed TOML content.
     """
 
     if not (config_path := get_config_path()).exists():
@@ -113,6 +113,12 @@ def _read_config_options() -> dict[str, Any]:
         return tomlkit.load(f)
 
 def reset_config_file():
+    """Reset configuration to defaults by deleting and recreating the file.
+
+    Notes
+    -----
+    This operation updates the in-memory global configuration immediately.
+    """
     global _GLOBAL_CONFIG
     if get_config_path().exists():
         get_config_path().unlink()
@@ -124,9 +130,15 @@ _GLOBAL_CONFIG = _read_config_options()
 def save_config(path: Path | None = None) -> None:
     """Persist the in-memory configuration to a TOML file.
 
-    Args:
-        path: Optional path to write the config file. If ``None``, writes
-            to the default path returned by ``get_config_path()``.
+    Parameters
+    ----------
+    path : pathlib.Path or None, default None
+        Optional output path. When ``None``, the default location from
+        :func:`get_config_path` is used.
+
+    Notes
+    -----
+    Path instances in values are converted to POSIX strings before writing.
     """
     target = get_config_path() if path is None else Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -148,13 +160,18 @@ def save_config(path: Path | None = None) -> None:
 def load_config(path: Path | None = None, overwrite: bool = True) -> dict[str, Any]:
     """Load configuration from a TOML file and optionally overwrite global state.
 
-    Args:
-        path: Optional path to a TOML file. If ``None``, uses default config path.
-        overwrite: If True, replace ``_GLOBAL_CONFIG`` with the loaded config.
-            If False, only set missing top-level tables (shallow merge).
+    Parameters
+    ----------
+    path : pathlib.Path or None, default None
+        Optional path to a TOML file. If ``None``, the default config path is used.
+    overwrite : bool, default True
+        If ``True``, replace ``_GLOBAL_CONFIG`` entirely. If ``False``, only
+        missing top-level tables are inserted (shallow merge).
 
-    Returns:
-        The loaded configuration dictionary (and the new global if overwritten).
+    Returns
+    -------
+    dict[str, Any]
+        Loaded configuration dictionary.
     """
     cfg_path = get_config_path() if path is None else Path(path)
     if not cfg_path.exists():
@@ -176,9 +193,9 @@ def load_config(path: Path | None = None, overwrite: bool = True) -> dict[str, A
 def show_config() -> None:
     """Print all current global options to the console.
 
-    Note:
-        This function uses `pprint` for a formatted output of the 
-        global configuration state.
+    Notes
+    -----
+    Uses :func:`pprint.pprint` for a compact formatted output.
     """
     from pprint import pprint
     return pprint(_GLOBAL_CONFIG, indent=2, width=20)
@@ -189,30 +206,35 @@ def get_option(name: str, default: Any = None) -> Any:
     Options are organized in tables (sections) within the TOML file.
     This function uses dot notation to access nested values.
 
-    Args:
-        name: The name of the option to retrieve using the format
-            `<table-name>.<option-name>` (e.g., 'crs_soda.user_email').
-        default: Value to return if the option is not found. Defaults to None.
+    Parameters
+    ----------
+    name : str
+        Option path in ``<table>.<option>`` format
+        (for example, ``"solar-position.algorithm"``).
+    default : Any, default None
+        Value returned when the table or option is missing.
 
-    Returns:
-        Any: The value of the option. Returns `default` if the option 
-            is missing. Special case: options named 'data_dir' are 
-            automatically converted to `Path` objects.
-            
-    Examples:
-        >>> from spartasolar.config import get_option
+    Returns
+    -------
+    Any
+        Option value, or ``default`` when missing. Options named ``data_dir``
+        are returned as :class:`pathlib.Path`.
+
+    Examples
+    --------
+        >>> from solarpandas.config import get_option
         
         >>> # Get solar position algorithm
-        >>> algorithm = get_option('sunwhere.algorithm')
+        >>> algorithm = get_option('solar-position.algorithm')
         >>> print(algorithm)
         'psa'
         
         >>> # Get with default value
-        >>> email = get_option('crs_soda.user_email', default='user@example.com')
+        >>> server = get_option('bsrn.server', default='ftp.bsrn.awi.de')
         
         >>> # Data directories return Path objects
         >>> from pathlib import Path
-        >>> data_dir = get_option('merra2_daily.data_dir')
+        >>> data_dir = get_option('bsrn.data_dir')
         >>> isinstance(data_dir, (Path, type(None)))
         True
     """
@@ -233,33 +255,29 @@ def set_option(name: str, value: Any) -> None:
     the Python session ends. To make persistent changes, edit the
     config.toml file directly.
 
-    Args:
-        name: The name of the option to update in format `<table>.<option>`.
-        value: The new value to assign. Path objects for 'data_dir' options
-            are automatically converted to strings.
+    Parameters
+    ----------
+    name : str
+        Option path in ``<table>.<option>`` format.
+    value : Any
+        New value. For ``data_dir`` options, ``Path`` is converted to string.
 
-    Returns:
-        None
-
-    Warning:
-        Session-only changes are NOT saved to the config file. Restart
-        the Python session to revert to file values.
-        
-    Examples:
-        >>> from spartasolar.config import set_option, get_option
+    Examples
+    --------
+        >>> from solarpandas.config import set_option, get_option
         
         >>> # Change solar position algorithm
-        >>> set_option('sunwhere.algorithm', 'spa')
-        >>> get_option('sunwhere.algorithm')
-        'spa'
+        >>> set_option('solar-position.algorithm', 'nrel')
+        >>> get_option('solar-position.algorithm')
+        'nrel'
         
         >>> # Set data directory with Path object
         >>> from pathlib import Path
-        >>> set_option('merra2_daily.data_dir', Path('/custom/path'))
-        
-    Note:
-        To persist changes, manually edit the configuration file at the
-        path returned by get_config_path().
+        >>> set_option('bsrn.data_dir', Path('/tmp/bsrn-cache'))
+
+    Notes
+    -----
+    Changes are session-local until :func:`save_config` is called.
     """
 
     table_name, option_name = name.split(".")

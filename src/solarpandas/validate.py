@@ -282,6 +282,10 @@ def validate_type(value: Any, annotated_type: Any) -> Any:
         - Longitude: Validates longitude coordinates (-180° ≤ lon < 180°)
         - Elevation: Validates elevation/altitude (-450m < elev < 8900m)
         - Model: Validates model names (SPARTA, BIRD)
+
+    Notes:
+        The function expects a type alias declared with the ``type`` statement,
+        for example ``type Latitude = Annotated[float, ValidaRange(...)]``.
     """
     if value is not None:
         anntype_value = annotated_type.__value__
@@ -298,7 +302,7 @@ type Latitude = Annotated[float, ValidaRange(gt=-90, lt=90)]
 Validates latitude values in decimal degrees. Range: -90° < lat < 90° (exclusive).
 
 Examples:
-    >>> from spartasolar.validation import validate_type, Latitude
+    >>> from solarpandas.validate import validate_type, Latitude
     >>> validate_type(40.4168, Latitude)  # Madrid
     40.4168
     >>> validate_type(-33.8688, Latitude)  # Sydney
@@ -311,7 +315,7 @@ type Longitude = Annotated[float, ValidaRange(ge=-180, lt=180)]
 Validates longitude values in decimal degrees. Range: -180° ≤ lon < 180°.
 
 Examples:
-    >>> from spartasolar.validation import validate_type, Longitude
+    >>> from solarpandas.validate import validate_type, Longitude
     >>> validate_type(-3.7038, Longitude)  # Madrid
     -3.7038
     >>> validate_type(151.2093, Longitude)  # Sydney
@@ -325,7 +329,7 @@ Validates elevation in meters above sea level. Range: -450m < elev < 8900m.
 Covers from Dead Sea (-430m) to Mt. Everest (8849m).
 
 Examples:
-    >>> from spartasolar.validation import validate_type, Elevation
+    >>> from solarpandas.validate import validate_type, Elevation
     >>> validate_type(667, Elevation)  # Madrid
     667.0
     >>> validate_type(0, Elevation)  # Sea level
@@ -343,7 +347,7 @@ Allowed values (ISO 8601 duration format):
     - `P01M`: 1 month (monthly)
 
 Examples:
-    >>> from spartasolar.validation import validate_type, SodaTimeStep
+    >>> from solarpandas.validate import validate_type, SodaTimeStep
     >>> validate_type("PT01H", SodaTimeStep)
     'PT01H'
 """
@@ -356,7 +360,7 @@ Allowed values:
     - `cams_radiation`: CAMS all-sky radiation service
 
 Examples:
-    >>> from spartasolar.validation import validate_type, SodaStream
+    >>> from solarpandas.validate import validate_type, SodaStream
     >>> validate_type("mcclear", SodaStream)
     'mcclear'
 """

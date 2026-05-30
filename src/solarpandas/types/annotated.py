@@ -1,4 +1,6 @@
 
+"""Annotated domain types and validation entry points used by solarpandas."""
+
 import re
 from dataclasses import dataclass
 from typing import Annotated, get_args, get_origin
@@ -6,9 +8,12 @@ from typing import Annotated, get_args, get_origin
 
 @dataclass
 class ValidaRegex:
+    """Validator for values constrained by a regular-expression pattern."""
+
     pattern: str
 
     def validate(self, value, annotated_type):
+        """Validate a string value against the configured regex pattern."""
         if not isinstance(value, str):
             raise TypeError(f"{annotated_type.__name__} must be a string")
         if not re.match(self.pattern, value):
@@ -17,12 +22,15 @@ class ValidaRegex:
 
 @dataclass
 class ValidaRange:
+    """Validator for numeric ranges using inclusive and exclusive bounds."""
+
     le: float | None = None
     lt: float | None = None
     ge: float | None = None
     gt: float | None = None
 
     def validate(self, value, annotated_type):
+        """Validate that a value can be cast to float and satisfies bounds."""
         try:
             value = float(value)
         except Exception:
@@ -50,6 +58,26 @@ type Elevation = Annotated[float, ValidaRange(gt=-450, lt=8900)]
 
 
 def validate_type(value, annotated_type):
+    """Validate a value against an ``Annotated`` type alias.
+
+    Parameters
+    ----------
+    value : Any
+        Input value to validate.
+    annotated_type : Any
+        Type alias defined as ``Annotated[base_type, Validator(...)]``.
+
+    Returns
+    -------
+    Any
+        Validated value, or ``None`` when ``value`` is ``None``.
+
+    Examples
+    --------
+    >>> from solarpandas.types import Latitude, validate_type
+    >>> validate_type(37.2, Latitude)
+    37.2
+    """
     if value is not None:
         anntype_value = annotated_type.__value__
         if not hasattr(anntype_value, "__origin__") or get_origin(anntype_value) is not Annotated:

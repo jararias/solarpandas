@@ -1,4 +1,6 @@
 
+"""Quality-control tests based on K-space consistency relationships."""
+
 import datashader as ds
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -20,7 +22,7 @@ logger = logger.opt(colors=True)
 
 
 def test_Kn_ppl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that Kn is within physically possible limits."""
+    """Evaluate the physically possible limits test for Kn."""
 
     # flagKnKt in Table 4 of Forstinger et al.
 
@@ -49,6 +51,7 @@ def test_Kn_ppl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_Kn_ppl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot Kn versus KT for physically-possible-limit diagnostics."""
 
     KT = sdf.param.KT
     Kn = sdf.param.Kn
@@ -65,7 +68,7 @@ def plot_test_Kn_ppl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Ax
 
 
 def test_Kn_erl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that Kn is within extremely rare limits."""
+    """Evaluate the extremely rare limits test for Kn."""
 
     # flagKn in Table 4 of Forstinger et al.
 
@@ -89,6 +92,7 @@ def test_Kn_erl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_Kn_erl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot Kn versus KT for extremely-rare-limit diagnostics."""
 
     KT = sdf.param.KT
     Kn = sdf.param.Kn
@@ -107,7 +111,7 @@ def plot_test_Kn_erl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Ax
 
 
 def test_KT_erl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that KT is within extremely rare limits."""
+    """Evaluate the extremely rare limits test for KT."""
 
     # flagKt in Table 4 of Forstinger et al.
 
@@ -131,6 +135,7 @@ def test_KT_erl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_KT_erl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot KT against zenith with ERL threshold and flagged points."""
 
     KT = sdf.param.KT
 
@@ -145,7 +150,7 @@ def plot_test_KT_erl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Ax
 
 
 def test_K_erl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that K is within extremely rare limits."""
+    """Evaluate the extremely rare limits test for K."""
 
     # flagKlowSZA and flagKhighSZA in Table 4 of Forstinger et al.
 
@@ -175,6 +180,7 @@ def test_K_erl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_K_erl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot K against zenith with ERL threshold and flagged points."""
 
     K = sdf.param.K
 
@@ -189,7 +195,7 @@ def plot_test_K_erl(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axe
 
 
 def test_K_erl_clear(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that K is within extremely rare limits."""
+    """Evaluate K clear-sky consistency test under ERL conditions."""
 
     # flagKKt in Table 4 of Forstinger et al.
 
@@ -220,6 +226,7 @@ def test_K_erl_clear(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_K_erl_clear(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot K versus KT for ERL clear-sky consistency diagnostics."""
 
     K = sdf.param.K
     KT = sdf.param.KT
@@ -235,6 +242,7 @@ def plot_test_K_erl_clear(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> p
 
 
 def plot_test(x: str, y: str, sdf: SolarDataFrame, **kwargs) -> plt.Axes:
+    """Render a generic K-space QC diagnostic plot with density and flags."""
 
     plt.style.use("solarpandas-qc")
     if "rc" in kwargs:

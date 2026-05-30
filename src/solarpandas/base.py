@@ -1,3 +1,13 @@
+"""Core data containers with site metadata for solar time series.
+
+This module defines :class:`SolarSeries` and :class:`SolarDataFrame`, two pandas
+subclasses that keep site-level metadata (latitude, longitude, elevation and
+custom metadata) attached to the object through common pandas operations.
+
+The module also provides top-level convenience readers for the custom CSV and
+Parquet formats implemented by :class:`SolarDataFrame`.
+"""
+
 import copy
 import json
 import linecache
@@ -17,14 +27,83 @@ logger.enable(__name__)
 
 
 def read_csv(filename, **kwargs):
+    """Read a CSV file into a :class:`SolarDataFrame`.
+
+    Parameters
+    ----------
+    filename : str or pathlib.Path
+        Input file path.
+    **kwargs : Any
+        Additional keyword arguments passed to
+        :meth:`SolarDataFrame.read_csv`.
+
+    Returns
+    -------
+    SolarDataFrame
+        Data loaded from ``filename`` with metadata recovered from the first
+        JSON-encoded line.
+
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> sdf = sp.read_csv("station_data.csv")
+    >>> isinstance(sdf, sp.SolarDataFrame)
+    True
+    """
     return SolarDataFrame.read_csv(filename, **kwargs)
 
 
 def read_parquet(filename):
+    """Read a Parquet file into a :class:`SolarDataFrame`.
+
+    Parameters
+    ----------
+    filename : str or pathlib.Path
+        Input file path.
+
+    Returns
+    -------
+    SolarDataFrame
+        Data loaded from ``filename`` with metadata recovered from the Parquet
+        schema metadata under the ``solarpandas`` key.
+
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> sdf = sp.read_parquet("station_data.parquet")
+    >>> sdf.latitude
+    37.0
+    """
     return SolarDataFrame.read_parquet(filename)
 
 
 class SolarSeries(pd.Series):
+    """One-dimensional solar data series carrying site metadata.
+
+    Parameters
+    ----------
+    latitude : float
+        Site latitude in decimal degrees. Must satisfy ``-90 < lat < 90``.
+    longitude : float
+        Site longitude in decimal degrees. Must satisfy ``-180 <= lon < 180``.
+    elevation : float, default 0.0
+        Site elevation in meters.
+    custom_metadata : dict or None, default None
+        Additional user metadata to attach to the series.
+
+    Notes
+    -----
+    Reserved metadata keys are ``latitude``, ``longitude`` and ``elevation``.
+    They are managed internally and cannot be provided in ``custom_metadata``.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from solarpandas import SolarSeries
+    >>> s = SolarSeries([1.0, 2.0], index=pd.date_range("2024-01-01", periods=2, freq="1h", tz="UTC"), latitude=37.0, longitude=-3.6)
+    >>> s.latitude
+    37.0
+    """
     _metadata = ["_latitude", "_longitude", "_elevation", "_custom_metadata"]
 
     @property
@@ -89,6 +168,19 @@ class SolarSeries(pd.Series):
     def clone(
         self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
     ) -> Self:
+        """Create a copy with identical site metadata and new payload values.
+
+        Parameters
+        ----------
+        other : pandas.Series, pandas.DataFrame, sequence, or scalar number
+            New data payload.
+
+        Returns
+        -------
+        Self
+            A new :class:`SolarSeries` preserving index (when applicable) and
+            metadata from the source object.
+        """
         kwargs = {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -176,6 +268,32 @@ class SolarSeries(pd.Series):
 
 
 class SolarDataFrame(pd.DataFrame):
+    """Two-dimensional solar dataset carrying site metadata.
+
+    Parameters
+    ----------
+    latitude : float
+        Site latitude in decimal degrees. Must satisfy ``-90 < lat < 90``.
+    longitude : float
+        Site longitude in decimal degrees. Must satisfy ``-180 <= lon < 180``.
+    elevation : float, default 0.0
+        Site elevation in meters.
+    custom_metadata : dict or None, default None
+        Additional user metadata to keep together with the dataframe.
+
+    Notes
+    -----
+    Metadata keys are propagated through the custom pandas constructors used by
+    this class for slicing and transformation operations.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from solarpandas import SolarDataFrame
+    >>> df = SolarDataFrame({"ghi": [0.0, 10.0]}, index=pd.date_range("2024-01-01", periods=2, freq="1h", tz="UTC"), latitude=37.0, longitude=-3.6)
+    >>> "ghi" in df.columns
+    True
+    """
     _metadata = ["_latitude", "_longitude", "_elevation", "_custom_metadata"]
 
     @property
@@ -238,14 +356,41 @@ class SolarDataFrame(pd.DataFrame):
         return self._custom_metadata
 
     def as_pandas(self):
+        """Return a plain pandas DataFrame view of this object.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Equivalent dataframe without solarpandas subclass semantics.
+        """
         return pd.DataFrame(self)
 
     def describe(self):
+        """Compute descriptive statistics as a plain pandas dataframe.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Result of ``pandas.DataFrame.describe`` on this dataset.
+        """
         return self.as_pandas().describe()
 
     def clone(
         self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
     ) -> Self:
+        """Create a copy with identical metadata and replaced data payload.
+
+        Parameters
+        ----------
+        other : pandas.Series, pandas.DataFrame, sequence, or scalar number
+            New data payload used to build the cloned object.
+
+        Returns
+        -------
+        Self
+            A new :class:`SolarDataFrame` preserving metadata from the current
+            object.
+        """
         kwargs = {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -277,6 +422,22 @@ class SolarDataFrame(pd.DataFrame):
         )
 
     def to_csv(self, path: str | Path, **kwargs):
+        """Write dataframe and metadata to a CSV file.
+
+        The first output line stores a JSON document with metadata. Data values
+        are written from the second line onward using ``pandas.DataFrame.to_csv``.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Destination path.
+        **kwargs : Any
+            Extra keyword arguments passed to ``DataFrame.to_csv``.
+
+        Notes
+        -----
+        Parent directories are created automatically when missing.
+        """
         metadata = {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -292,6 +453,20 @@ class SolarDataFrame(pd.DataFrame):
             pd.DataFrame(self).to_csv(f, **(default_kwargs | kwargs))
 
     def to_parquet(self, path: str | Path, **kwargs):
+        """Write dataframe and metadata to a Parquet file.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Destination path.
+        **kwargs : Any
+            Extra keyword arguments passed to ``pyarrow.parquet.write_table``.
+
+        Notes
+        -----
+        Metadata is stored in the Parquet schema metadata under the
+        ``solarpandas`` key as a JSON-encoded payload.
+        """
         metadata = {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -328,6 +503,27 @@ class SolarDataFrame(pd.DataFrame):
 
     @classmethod
     def read_csv(cls, path: str | Path, **kwargs):
+        """Read a CSV file written by :meth:`to_csv`.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Input file path.
+        **kwargs : Any
+            Additional keyword arguments passed to :func:`pandas.read_csv`.
+
+        Returns
+        -------
+        SolarDataFrame
+            Parsed dataset with restored site metadata.
+
+        Examples
+        --------
+        >>> sdf.to_csv("data.csv")
+        >>> restored = SolarDataFrame.read_csv("data.csv")
+        >>> restored.latitude == sdf.latitude
+        True
+        """
         if not (p := Path(path)).exists():
             raise ValueError(f"missing file {path}")
 
@@ -346,6 +542,25 @@ class SolarDataFrame(pd.DataFrame):
 
     @classmethod
     def read_parquet(cls, path: str | Path):
+        """Read a Parquet file written by :meth:`to_parquet`.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Input file path.
+
+        Returns
+        -------
+        SolarDataFrame
+            Parsed dataset with restored site metadata.
+
+        Examples
+        --------
+        >>> sdf.to_parquet("data.parquet")
+        >>> restored = SolarDataFrame.read_parquet("data.parquet")
+        >>> restored.longitude == sdf.longitude
+        True
+        """
         if not (p := Path(path)).exists():
             raise ValueError(f"missing file {path}")
         table = pq.read_table(p)

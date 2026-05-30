@@ -1,4 +1,6 @@
 
+"""Quality-control checks based on radiative closure consistency."""
+
 import datashader as ds
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -21,7 +23,7 @@ logger = logger.opt(colors=True)
 
 
 def test_closure(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that check the closure consistency."""
+    """Evaluate radiative closure consistency between GHI, DNI and DIF."""
 
     # flag3lowSZA and flag3highSZA in Table 5 of Forstinger et al.
 
@@ -57,6 +59,7 @@ def test_closure(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_closure(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot closure ratio diagnostics and flagged points versus zenith."""
 
     plt.style.use("solarpandas-qc")
     mpl.rcParams.update({"legend.loc": "lower left"})

@@ -1,4 +1,6 @@
 
+"""Helper utilities for parsing, downloading, and preparing BSRN resources."""
+
 import re
 import ftplib
 import json
@@ -18,6 +20,18 @@ logger = logger.opt(colors=True)
 
 
 def get_file_age(path: Path):
+    """Return file age in days.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        File path to inspect.
+
+    Returns
+    -------
+    float
+        Age in days, or ``np.inf`` when the file does not exist.
+    """
     if not path.exists():
         return np.inf
     datetime_created = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
@@ -32,6 +46,24 @@ def fetch_site_data_from_ftp(
     password: str | None = None,
     timeout: int | None = None
 ) -> None:
+    """Download one BSRN monthly file from the FTP server.
+
+    Parameters
+    ----------
+    remote_fn : str
+        Remote filename (for example ``cab0124.dat.gz``).
+    local_path : str or pathlib.Path
+        Local directory where the file will be stored.
+    user, password : str or None, optional
+        FTP credentials. When omitted, credentials are read from ``~/.netrc``.
+    timeout : int or None, optional
+        FTP connection timeout in seconds.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the downloaded local file.
+    """
 
     site = validate_type(remote_fn[:3], Site)
 
@@ -82,6 +114,13 @@ def fetch_site_data_from_ftp(
     return local_path / remote_fn
 
 def fetch_allsite_metadata_from_pangaea():
+    """Fetch and normalize BSRN station metadata from the PANGAEA catalog.
+
+    Returns
+    -------
+    dict[str, dict[str, Any]]
+        Mapping keyed by station acronym (lowercase).
+    """
     # More tables in:
     #  https://dataportals.pangaea.de/bsrn/
     #  End of: hhttps://bsrn.awi.de/data/data-retrieval-via-pangaea/
@@ -123,6 +162,13 @@ def inspect_data_availability(
     password: str | None = None,
     timeout: int | None = 30,
 ) -> dict[str, list[str]]:
+    """Inspect remote FTP availability for all BSRN station directories.
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Mapping from station code to list of available ``.dat.gz`` files.
+    """
 
     if (server := get_option("bsrn.server", None)) is None:
         raise ValueError("BSRN server not specified in config file")

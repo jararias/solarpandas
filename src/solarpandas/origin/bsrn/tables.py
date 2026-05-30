@@ -1,4 +1,6 @@
 
+"""Lookup tables for BSRN logical-record identifiers and descriptions."""
+
 LogicalRecordDescription = {
     '0001': 'basic information',
     '0002': 'scientist',

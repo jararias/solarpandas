@@ -1,0 +1,49 @@
+# API Docstring Audit
+
+| API module | Exported symbol | Source file | Kind | Docstring | Examples |
+|---|---|---|---|---|---|
+| solarpandas | CDAIrradianceAccessor | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | ClearskyIrradianceAccessor | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | LTAIrradianceAccessor | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | QualityControlAccessor | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | SolarDataFrame | src/solarpandas/base.py | ClassDef | yes | yes |
+| solarpandas | SolarPositionAccessor | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | SolarSeries | src/solarpandas/base.py | ClassDef | yes | yes |
+| solarpandas | _register_mplstyles | src/solarpandas/mplstyles/__init__.py | FunctionDef | yes | yes |
+| solarpandas | clear_clearsky_cache | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | clear_qc_cache | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | clear_solpos_cache | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | config | src/solarpandas/config.py | module | n/a | n/a |
+| solarpandas | enable_logger | src/solarpandas/logtools.py | FunctionDef | yes | yes |
+| solarpandas | get_clearsky_cache_info | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | get_qc_cache_info | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | get_solpos_cache_info | src/solarpandas/accessors/__init__.py | reexport | n/a | n/a |
+| solarpandas | read_csv | src/solarpandas/base.py | FunctionDef | yes | yes |
+| solarpandas | read_parquet | src/solarpandas/base.py | FunctionDef | yes | yes |
+| solarpandas | sample_data | src/solarpandas/sample_data/__init__.py | module | n/a | n/a |
+| solarpandas.accessors | CDAIrradianceAccessor | src/solarpandas/accessors/clearsky.py | ClassDef | yes | yes |
+| solarpandas.accessors | ClearskyIrradianceAccessor | src/solarpandas/accessors/clearsky.py | ClassDef | yes | yes |
+| solarpandas.accessors | LTAIrradianceAccessor | src/solarpandas/accessors/clearsky.py | ClassDef | yes | yes |
+| solarpandas.accessors | ParameterAccessor | src/solarpandas/accessors/param.py | ClassDef | yes | yes |
+| solarpandas.accessors | QCFlagAccessor | src/solarpandas/accessors/qcflag.py | ClassDef | yes | yes |
+| solarpandas.accessors | QualityControlAccessor | src/solarpandas/accessors/qcontrol.py | ClassDef | yes | yes |
+| solarpandas.accessors | SolarPlotAccessor | src/solarpandas/accessors/solarplot.py | ClassDef | yes | yes |
+| solarpandas.accessors | SolarPositionAccessor | src/solarpandas/accessors/solpos.py | ClassDef | yes | yes |
+| solarpandas.accessors | clear_clearsky_cache | src/solarpandas/accessors/clearsky.py | FunctionDef | yes | yes |
+| solarpandas.accessors | clear_qc_cache | src/solarpandas/accessors/qcontrol.py | FunctionDef | yes | yes |
+| solarpandas.accessors | clear_solpos_cache | src/solarpandas/accessors/solpos.py | FunctionDef | yes | yes |
+| solarpandas.accessors | get_clearsky_cache_info | src/solarpandas/accessors/clearsky.py | FunctionDef | yes | yes |
+| solarpandas.accessors | get_qc_cache_info | src/solarpandas/accessors/qcontrol.py | FunctionDef | yes | yes |
+| solarpandas.accessors | get_solpos_cache_info | src/solarpandas/accessors/solpos.py | FunctionDef | yes | yes |
+| solarpandas.origin.bsrn | data_availability | src/solarpandas/origin/bsrn/core.py | FunctionDef | yes | yes |
+| solarpandas.origin.bsrn | get_database_path | src/solarpandas/origin/bsrn/core.py | FunctionDef | yes | yes |
+| solarpandas.origin.bsrn | load_data | src/solarpandas/origin/bsrn/core.py | FunctionDef | yes | yes |
+| solarpandas.origin.bsrn | load_metadata | src/solarpandas/origin/bsrn/core.py | FunctionDef | yes | yes |
+| solarpandas.qcontrol | check_timeshift | src/solarpandas/qcontrol/timeshift.py | FunctionDef | yes | yes |
+| solarpandas.types | Elevation | src/solarpandas/types/annotated.py | reexport | n/a | n/a |
+| solarpandas.types | Latitude | src/solarpandas/types/annotated.py | reexport | n/a | n/a |
+| solarpandas.types | Longitude | src/solarpandas/types/annotated.py | reexport | n/a | n/a |
+| solarpandas.types | QCFlagArray | src/solarpandas/types/qcflag.py | ClassDef | yes | yes |
+| solarpandas.types | QCFlagDtype | src/solarpandas/types/qcflag.py | ClassDef | yes | yes |
+| solarpandas.types | QCFlagEnum | src/solarpandas/types/qcflag.py | ClassDef | yes | yes |
+| solarpandas.types | validate_type | src/solarpandas/types/annotated.py | FunctionDef | yes | yes |

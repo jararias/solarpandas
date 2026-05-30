@@ -1,4 +1,6 @@
 
+"""Core public API to inspect, fetch, and load BSRN datasets."""
+
 import functools
 import gzip
 import itertools
@@ -49,9 +51,16 @@ def get_database_path():
     This function retrieves the path from the global configuration. If the
     path is not set, it returns the default path.
 
-    Returns:
-        Path | None: The path to the local BSRN database directory, or `None`
-            if it is not set in the configuration. If the path is set, it is returned as a `Path` object.
+    Returns
+    -------
+    pathlib.Path
+        Path to the local BSRN database directory.
+
+    Examples
+    --------
+    >>> from solarpandas.origin.bsrn import get_database_path
+    >>> get_database_path().name
+    'bsrn'
     """
     default_path = platformdirs.user_data_path(appname="solarpandas") / "bsrn"
     return get_option("bsrn.data_dir", default=default_path)
@@ -155,6 +164,13 @@ def data_availability(
 
     Returns:
         dict[str, list[str]] | str: A dictionary where keys are site identifiers and values are lists of available data files for each site, or a yearly availability table if `as_year_table` is True.
+
+    Examples
+    --------
+    >>> from solarpandas.origin.bsrn import data_availability
+    >>> table = data_availability(update=False, as_year_table=True)
+    >>> isinstance(table, str)
+    True
     """
     availability_path = get_database_path() / "ftp" / "availability.json"
     file_age_days = helpers.get_file_age(availability_path)
@@ -191,6 +207,26 @@ def data_availability(
 
 
 def load_metadata(update: Literal["auto"] | bool = "auto"):
+    """Load cached station metadata, optionally refreshing remote source.
+
+    Parameters
+    ----------
+    update : {"auto", bool}, default "auto"
+        If ``True``, force refresh from PANGAEA. If ``"auto"``, refresh when
+        cache age is older than 7 days.
+
+    Returns
+    -------
+    dict[str, Any]
+        Station metadata dictionary keyed by site acronym.
+
+    Examples
+    --------
+    >>> from solarpandas.origin.bsrn import load_metadata
+    >>> meta = load_metadata(update=False)
+    >>> isinstance(meta, dict)
+    True
+    """
 
     metadata_path = get_database_path() / "ftp" / "metadata.json"
     file_age_days = helpers.get_file_age(metadata_path)
@@ -217,8 +253,32 @@ def load_data(
     logical_record: Literal["LR0100", "LR0300", "LR0500"] = "LR0100",
     group: Literal["essential", "avg", "all"] = "essential",
 ) -> SolarDataFrame | None:
-    """Load BSRN data from a local cache of previously retrieved data files with
-       basic (canonical) parameters and time filled and centered."""
+    """Load yearly BSRN data from cache or raw FTP files.
+
+    Parameters
+    ----------
+    site : Site
+        Three-letter BSRN station code.
+    years : Year or sequence of Year
+        Year or list of years to retrieve.
+    logical_record : {"LR0100", "LR0300", "LR0500"}, default "LR0100"
+        Logical record to load and cache.
+    group : {"essential", "avg", "all"}, default "essential"
+        Variable group selection based on CF metadata tags.
+
+    Returns
+    -------
+    SolarDataFrame or None
+        Combined dataframe with harmonized metadata, or ``None`` when no data
+        could be retrieved.
+
+    Examples
+    --------
+    >>> from solarpandas.origin.bsrn import load_data
+    >>> sdf = load_data(site="car", years=2016)
+    >>> sdf is None or "ghi" in sdf.columns
+    True
+    """
 
     site = validate_type(site, Site)
     years = [validate_type(year, Year) for year in np.asarray(years, dtype=int).reshape(-1)]
@@ -390,6 +450,31 @@ def load_data_from_bsrn_files(
     include_metadata: bool = False,
     extra_records: list[Literal["LR0300", "LR0500"]] | None = None,
 ):
+    """Load and parse monthly BSRN ``.dat.gz`` files from local FTP mirror.
+
+    Parameters
+    ----------
+    site : Site
+        Three-letter station code.
+    years : Year or sequence of Year
+        Years to load.
+    months : Month or sequence of Month, default ``range(1, 13)``
+        Months to load.
+    filled : bool, default True
+        If ``True``, reindex to dense 1-minute frequency.
+    centered : bool, default True
+        If ``True``, shift timestamps by 30 seconds to represent minute centers.
+    include_metadata : bool, default False
+        Whether to include per-file metadata dataframe in output tuple.
+    extra_records : list[{"LR0300", "LR0500"}] or None, default None
+        Additional logical records to parse and return.
+
+    Returns
+    -------
+    Various
+        Return type depends on ``include_metadata`` and ``extra_records``
+        according to overload declarations above.
+    """
 
     site = validate_type(site, Site)
     years = [validate_type(year, Year) for year in np.asarray(years, dtype=int).reshape(-1)]
@@ -555,6 +640,8 @@ def load_data_from_bsrn_files(
 
 @dataclass
 class LogicalRecord:
+    """Representation of one logical record block found in a BSRN file."""
+
     signature: str
     first_line: int
     last_line: int
@@ -591,6 +678,7 @@ class LogicalRecord:
         return self.signature[1] == "C"
 
     def parse(self, **kwargs) -> dict[str, Any]:
+        """Parse record lines with the associated logical-record parser."""
         if self.parser is None:
             raise ValueError("no parser available for logical record {self.name}")
         logger.debug(f"parsing <blue>{self.name}</blue> with parser <blue>{self.parser.__name__}</blue>")
@@ -624,6 +712,24 @@ def parse_bsrn_file(
     logical_records: LogicalRecordName | list[LogicalRecordName] | None = None,
     timeout: int = 30,
 ) -> dict[str, Any]:
+    """Parse selected logical records from a BSRN ``.dat.gz`` file.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Local path to monthly BSRN file.
+    check_remote_on_missing_file : bool, default True
+        If ``True``, attempt remote FTP download when file is missing locally.
+    logical_records : LogicalRecordName or list[LogicalRecordName] or None
+        Records to parse. When ``None``, all supported records in file are parsed.
+    timeout : int, default 30
+        FTP timeout in seconds for remote retrieval.
+
+    Returns
+    -------
+    dict[str, Any]
+        Parsed content keyed by logical record name (e.g. ``"LR0100"``).
+    """
 
     if logical_records is not None:
         if isinstance(logical_records, str):

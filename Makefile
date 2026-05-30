@@ -20,3 +20,10 @@ clean:
 	@rm -f MANIFEST
 	@find . -name "__pycache__" -print0 | xargs -0 -I {} /bin/rm -rf "{}"
 
+.PHONY: test
+test:
+	@uv run pytest tests
+
+.PHONY: unit-tests
+unit-tests: test
+

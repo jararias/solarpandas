@@ -1,4 +1,6 @@
 
+"""Registry of qcrad quality-control tests as reusable ``QCTest`` objects."""
+
 from .helpers import QCTest
 from . import ppl, erl, Kspace, closure, tracker
 

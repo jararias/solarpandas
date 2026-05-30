@@ -1,4 +1,6 @@
 
+"""Quality-control checks related to tracker behavior and geometry."""
+
 #=============================================================================
 #    THIS TEST DOES NOT WORK. THINK ABOUT IT BECAUSE I DO NOT UNDERSTAND
 #    WHY IT IS DEFINED AS IT IS IN FORSTINGER ET AL. 2023. IT SEEMS TO BE
@@ -33,7 +35,7 @@ logger = logger.opt(colors=True)
 
 
 def test_trackeroff(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
-    """Test that check the closure consistency."""
+    """Evaluate tracker-off condition test based on CDA ratios."""
 
     # flagTracker in Table 8 of Forstinger et al.
 
@@ -67,6 +69,7 @@ def test_trackeroff(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
 
 
 def plot_test_trackeroff(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> plt.Axes:
+    """Plot tracker-off diagnostics in KT-K space with flagged points."""
 
     plt.style.use("solarpandas-qc")
     mpl.rcParams.update({"legend.loc": "lower left"})
