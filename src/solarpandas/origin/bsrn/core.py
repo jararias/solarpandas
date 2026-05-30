@@ -5,6 +5,7 @@ import itertools
 import json
 import multiprocessing as mp
 import re
+from datetime import datetime
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
@@ -56,7 +57,89 @@ def get_database_path():
     return get_option("bsrn.data_dir", default=default_path)
 
 
-def data_availability(update: Literal["auto"] | bool = "auto") -> dict[str, list[str]]:
+def _decode_bsrn_two_digit_year(yy: int, current_year: int | None = None) -> int:
+    """Decode BSRN two-digit years into four-digit years.
+
+    Uses a moving pivot based on the current year: values up to current year + 1
+    are interpreted as 2000s, the rest as 1900s.
+    """
+    if current_year is None:
+        current_year = datetime.now().year
+
+    pivot = (current_year % 100) + 1
+    if yy <= pivot:
+        return 2000 + yy
+    return 1900 + yy
+
+
+def _availability_to_year_table(
+    availability: dict[str, list[str]], fill_char: str = "#"
+) -> str:
+    """Build a text table with one row per site and one column per year.
+
+    A filled cell means at least one monthly file is available for that
+    site/year; an empty cell means no files for that site/year.
+
+    The yearly axis is rendered in a compact form with one character per year.
+    Header labels are shown in two vertical rows (YY) every 5 years.
+    """
+    if len(fill_char) != 1:
+        raise ValueError("fill_char must be a single character")
+
+    file_pattern = re.compile(
+        r"^(?P<site_dir>[a-zA-Z0-9]{3})/(?P<site_file>[a-zA-Z0-9]{3})(?P<month>\d{2})(?P<yy>\d{2})\.dat\.gz$"
+    )
+
+    years_by_site: dict[str, set[int]] = {}
+    for site, filenames in availability.items():
+        site_years = years_by_site.setdefault(site, set())
+        for filename in filenames:
+            if not (match := file_pattern.match(filename)): 
+                continue
+            if match.group("site_dir").lower() != match.group("site_file").lower():
+                continue
+            yy = int(match.group("yy"))
+            site_years.add(_decode_bsrn_two_digit_year(yy))
+
+    all_years = sorted({year for years in years_by_site.values() for year in years})
+    if not all_years:
+        return "No BSRN data availability found."
+
+    site_col_width = max(4, max(len(site) for site in years_by_site))
+
+    header_top = []
+    header_bottom = []
+    for year in all_years:
+        if year % 5 == 0:
+            yy = f"{year % 100:02d}"
+            header_top.append(yy[0])
+            header_bottom.append(yy[1])
+        else:
+            header_top.append(" ")
+            header_bottom.append(" ")
+
+    header_row_1 = f"{'site':<{site_col_width}} | {''.join(header_top)}"
+    header_row_2 = f"{'':<{site_col_width}} | {''.join(header_bottom)}"
+    separator = f"{'-' * site_col_width}-+-{'-' * len(all_years)}"
+
+    rows = []
+    repeated_header_block = [header_row_1, header_row_2, separator]
+    for i, site in enumerate(sorted(years_by_site)):
+        if i > 0 and i % 20 == 0:
+            rows.extend(repeated_header_block)
+        site_years = years_by_site[site]
+        timeline = "".join(fill_char if year in site_years else " " for year in all_years)
+        rows.append(f"{site:<{site_col_width}} | {timeline}")
+
+    return "\n".join(repeated_header_block + rows)
+
+
+def data_availability(
+    update: Literal["auto"] | bool = "auto",
+    as_year_table: bool = False,
+    fill_char: str = "#",
+    year_table_output: str | Path | None = None,
+) -> dict[str, list[str]] | str:
     """Inspect the availability of BSRN data on the remote FTP server.
 
     This function connects to the BSRN FTP server and retrieves a list of
@@ -66,9 +149,12 @@ def data_availability(update: Literal["auto"] | bool = "auto") -> dict[str, list
 
     Args:
         update (Literal["auto"] | bool, optional): Whether to update the local cache of data availability. If set to "auto", the cache will be updated if it is older than 7 days. Defaults to "auto".
+        as_year_table (bool, optional): If True, return a text table with one row per site and one column per year, suitable for terminal display. Defaults to False.
+        fill_char (str, optional): Character used to fill cells with available data in the annual table. Must be a single character. Defaults to "#".
+        year_table_output (str | Path | None, optional): If provided, save the annual table to this text file path. The table is generated even when `as_year_table` is False. Defaults to None.
 
     Returns:
-        dict[str, list[str]]: A dictionary where keys are site identifiers and values are lists of available data files for each site.
+        dict[str, list[str]] | str: A dictionary where keys are site identifiers and values are lists of available data files for each site, or a yearly availability table if `as_year_table` is True.
     """
     availability_path = get_database_path() / "ftp" / "availability.json"
     file_age_days = helpers.get_file_age(availability_path)
@@ -88,7 +174,20 @@ def data_availability(update: Literal["auto"] | bool = "auto") -> dict[str, list
             json.dump(availability, f, indent=4)
 
     with availability_path.open("r") as f:
-        return json.load(f)
+        availability = json.load(f)
+
+    year_table = None
+    if as_year_table or year_table_output is not None:
+        year_table = _availability_to_year_table(availability, fill_char=fill_char)
+
+    if year_table_output is not None:
+        output_path = Path(year_table_output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(year_table, encoding="utf-8")
+
+    if as_year_table:
+        return year_table
+    return availability
 
 
 def load_metadata(update: Literal["auto"] | bool = "auto"):
