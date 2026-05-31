@@ -43,7 +43,7 @@ class ParameterAccessor:
         """
         if "ghi" not in self._sdf.columns:
             logger.warning("`ghi` column not found in dataframe. Cannot compute KT.")
-            return self._sdf.clone(pd.NA).iloc[:, 0].rename("KT")
+            return self._sdf.replace_data(pd.NA).iloc[:, 0].rename("KT")
         eth = self._sdf.solpos.eth
         daytime = self._sdf.solpos.zenith < 87.
         return self._sdf["ghi"].divide(eth).where(daytime, 0.).clip(1e-3, 1.35).rename("KT")
@@ -59,10 +59,10 @@ class ParameterAccessor:
         """
         if "ghi" not in self._sdf.columns:
             logger.warning("`ghi` column not found in dataframe. Cannot compute K.")
-            return self._sdf.clone(pd.NA).iloc[:, 0].rename("K")
+            return self._sdf.replace_data(pd.NA).iloc[:, 0].rename("K")
         if "dif" not in self._sdf.columns:
             logger.warning("`dif` column not found in dataframe. Cannot compute K.")
-            return self._sdf.clone(pd.NA).iloc[:, 0].rename("K")
+            return self._sdf.replace_data(pd.NA).iloc[:, 0].rename("K")
         zenith = self._sdf.solpos.zenith
         daytime = zenith < 87.
         return self._sdf["dif"].divide(self._sdf["ghi"]).where(daytime, 0.).clip(1e-3, 1.10).rename("K")
@@ -78,7 +78,7 @@ class ParameterAccessor:
         """
         if "dni" not in self._sdf.columns:
             logger.warning("`dni` column not found in dataframe. Cannot compute Kn.")
-            return self._sdf.clone(pd.NA).iloc[:, 0].rename("Kn")
+            return self._sdf.replace_data(pd.NA).iloc[:, 0].rename("Kn")
         dir = self._sdf["dni"]*self._sdf.solpos.cosz
         daytime = self._sdf.solpos.zenith < 87.
         return dir.divide(self._sdf.solpos.eth).where(daytime, 0.).clip(1e-3, 1.10).rename("Kn")

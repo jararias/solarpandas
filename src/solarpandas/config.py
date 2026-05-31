@@ -1,44 +1,20 @@
-r"""Configuration management for solarpandas.
+r"""Configuration loading and runtime option access for solarpandas.
 
-This module handles the persistent storage and retrieval of user settings using 
-a TOML configuration file located in the standard user configuration directory.
+This module initializes the user configuration file on first use, loads TOML
+content into an in-memory dictionary, and exposes helpers to query or override
+options during the current Python session.
 
-The configuration system manages:
-    - API credentials (e.g., SODA's user email)
-    - Local storage paths for cached data
-    - Algorithm preferences (e.g., solar position algorithm)
-    - Service-specific settings
-
-Configuration Flow:
-    1. On first import, checks if config file exists
-    2. If not found, creates it with default template
-    3. Loads configuration into memory (_GLOBAL_CONFIG)
-    4. Changes via set_option() are session-only
-    5. Persistent changes require manual editing of config.toml
-
-Configuration File Location:
-    - Linux: ~/.config/solarpandas/config.toml
-    - macOS: ~/Library/Application Support/solarpandas/config.toml
-    - Windows: C:\\Users\\<user>\\AppData\\Local\\solarpandas\\config.toml
+Notes
+-----
+The persistent config file is stored in the platform-specific user config
+directory and is named ``config.toml``.
 
 Examples
 --------
-    >>> from solarpandas.config import get_config_path, get_option, set_option
-    
-    >>> # Get configuration file path
-    >>> config_path = get_config_path()
-    >>> print(config_path)
-    PosixPath('/home/user/.config/solarpandas/config.toml')
-    
-    >>> # Retrieve an option
-    >>> email = get_option('crs_soda.user_email')
-    
-    >>> # Set option for current session only
-    >>> set_option('sunwhere.algorithm', 'spa')
-    
-    >>> # Get data directory (returns Path object)
-    >>> data_dir = get_option('merra2_daily.data_dir')
-
+>>> from solarpandas.config import get_config_path, get_option, set_option
+>>> config_path = get_config_path()
+>>> email = get_option("crs_soda.user_email")
+>>> set_option("solar-position.algorithm", "spa")
 """
 
 # HOW DOES THIS CONFIG WORK? WHEN THE FLOW PASS THROUGH, IT CHECKS IF THE CONFIG

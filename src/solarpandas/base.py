@@ -165,7 +165,7 @@ class SolarSeries(pd.Series):
     def custom_metadata(self):
         return self._custom_metadata
 
-    def clone(
+    def replace_data(
         self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
     ) -> Self:
         """Create a copy with identical site metadata and new payload values.
@@ -375,7 +375,7 @@ class SolarDataFrame(pd.DataFrame):
         """
         return self.as_pandas().describe()
 
-    def clone(
+    def replace_data(
         self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
     ) -> Self:
         """Create a copy with identical metadata and replaced data payload.

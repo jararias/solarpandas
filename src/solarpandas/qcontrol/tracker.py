@@ -1,15 +1,6 @@
 
 """Quality-control checks related to tracker behavior and geometry."""
 
-#=============================================================================
-#    THIS TEST DOES NOT WORK. THINK ABOUT IT BECAUSE I DO NOT UNDERSTAND
-#    WHY IT IS DEFINED AS IT IS IN FORSTINGER ET AL. 2023. IT SEEMS TO BE
-#    A TEST FOR TRACKER OFF CONDITIONS, BUT I DO NOT UNDERSTAND WHY THE
-#    GHI RATIO SHOULD BE USED IN THIS WAY. ALSO, THE TEST FAILS A LOT OF
-#    POINTS THAT SEEM TO BE GOOD. I NEED TO THINK ABOUT THIS MORE AND
-#    DOUBLE CHECK THE LITERATURE.
-#=============================================================================
-
 # Implementations:
 # https://git.sophia.minesparis.psl.eu/yves-marie.saint-drenan/libinsitu/-/blob/main/libinsitu/qc_utils.py?ref_type=heads
 # https://github.com/dazhiyang/bsrn/blob/main/src/bsrn/qc/tracker.py
@@ -80,12 +71,16 @@ def plot_test_trackeroff(sdf: SolarDataFrame, test: SolarSeries, **kwargs) -> pl
     ax_box = ax.get_window_extent()
 
     title = "Tracker-off Test Results"
-    network = sdf.custom_metadata.get("network", None)
-    if network is not None and network.casefold() == "bsrn":
-        station = sdf.custom_metadata.get("station", "unknown station")
-        location = sdf.custom_metadata.get("location", "unknown location")
-        acronym = sdf.custom_metadata.get("acronym", "unknown acronym")
-        title += f" at {station}, {location} ({acronym.upper()}, BSRN)"
+    if "location" in sdf.custom_metadata:
+        title += f" at {sdf.custom_metadata['location']}"
+    if "station" in sdf.custom_metadata:
+        title += f" ({sdf.custom_metadata['station']}"
+        if "network" in sdf.custom_metadata:
+            title += f", {sdf.custom_metadata['network']}"
+        title += ")"
+    else:
+        if "network" in sdf.custom_metadata:
+            title += f" ({sdf.custom_metadata['network']})"
     title += f" (lat={sdf.latitude:.4f}, lon={sdf.longitude:.4f}, alt={sdf.elevation:.0f} m)"
 
     cvs = ds.Canvas(plot_width=int(ax_box.width), plot_height=int(ax_box.height),

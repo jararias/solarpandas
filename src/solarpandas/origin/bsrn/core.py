@@ -156,14 +156,27 @@ def data_availability(
     JSON file to avoid unnecessary FTP connections. The cache is updated if it
     is older than 7 days or if the `update` parameter is set to `True`.
 
-    Args:
-        update (Literal["auto"] | bool, optional): Whether to update the local cache of data availability. If set to "auto", the cache will be updated if it is older than 7 days. Defaults to "auto".
-        as_year_table (bool, optional): If True, return a text table with one row per site and one column per year, suitable for terminal display. Defaults to False.
-        fill_char (str, optional): Character used to fill cells with available data in the annual table. Must be a single character. Defaults to "#".
-        year_table_output (str | Path | None, optional): If provided, save the annual table to this text file path. The table is generated even when `as_year_table` is False. Defaults to None.
+    Parameters
+    ----------
+    update : {"auto", bool}, default "auto"
+        Whether to refresh the local availability cache. With ``"auto"``, the
+        cache is refreshed when older than 7 days.
+    as_year_table : bool, default False
+        If ``True``, return a plain-text table with one row per site and one
+        column per year.
+    fill_char : str, default "#"
+        Character used to mark years with available data in the annual table.
+        Must be a single character.
+    year_table_output : str or pathlib.Path or None, default None
+        Optional output path to persist the annual table as a text file. The
+        table is generated when this argument is provided, even if
+        ``as_year_table`` is ``False``.
 
-    Returns:
-        dict[str, list[str]] | str: A dictionary where keys are site identifiers and values are lists of available data files for each site, or a yearly availability table if `as_year_table` is True.
+    Returns
+    -------
+    dict[str, list[str]] or str
+        Mapping from site acronym to list of available monthly files, or a
+        yearly availability table when ``as_year_table`` is ``True``.
 
     Examples
     --------
@@ -379,6 +392,52 @@ def load_data(
     return data
 
 
+def clear_cache(
+    site: Site | None = None,
+    year: Year | None = None,
+    logical_record: DataLogicalRecordName | None = None
+) -> None:
+    """Clear cached data files for a given site, year and logical record.
+
+    Parameters
+    ----------
+    site : Site or None, default None
+        Three-letter station code. If ``None``, all sites are included.
+    year : Year or None, default None
+        Year to clear. If ``None``, all years are included.
+    logical_record : DataLogicalRecordName or None, default None
+        Logical record to clear. If ``None``, all logical records are included.
+
+    Examples
+    --------
+    >>> from solarpandas.origin.bsrn import clear_cache
+    >>> clear_cache(site="car", year=2016, logical_record="LR0100")
+    """
+
+    cache_path = get_database_path() / "cached"
+
+    site_pattern = validate_type(site, Site) if site is not None else "*"
+    sites_to_clear = list(cache_path.glob(site_pattern))
+    logger.debug(f"Sites to clear: {[site.name for site in sites_to_clear]}")
+
+    year = validate_type(year, Year)
+    year_pattern = f"{year}" if year is not None else "*"
+
+    logical_record = validate_type(logical_record, DataLogicalRecordName)
+    lr_pattern = logical_record.lower() if logical_record is not None else "*"
+
+    for site_dir in sites_to_clear:
+        path = f"{site_dir.name}_{year_pattern}_{lr_pattern}.parquet"
+        files_to_clear = list(site_dir.glob(path))
+        logger.debug(f"Files to clear: {files_to_clear}")
+        for file in files_to_clear:
+            file.unlink()
+            logger.info(f"Cleared cached file: {file}")
+        if not list(site_dir.iterdir()):
+            site_dir.rmdir()
+            logger.info(f"Removed empty site directory: {site_dir}")
+
+
 def __parse_bsrn_file__(site, year, month, logical_records = None):
     set_of_lr = set(["LR0004", "LR0100"] + (logical_records if logical_records is not None else []))
     retrieval = parse_bsrn_file(
@@ -537,13 +596,6 @@ def load_data_from_bsrn_files(
 
     data = pd.concat([clean_data_retrieval(retr, lr="LR0100") for retr in retrievals], axis=0)
 
-    # if canonical:
-    #     must_variables = ["global_horizontal_avg", "direct_normal_avg", "diffuse_horizontal_avg"]
-    #     logger.debug(f"canonical=True: selecting only the basic variables {must_variables} and renaming them to their short names...")
-    #     data = data[must_variables].rename(
-    #         columns={var: MAPPING_OF_NAMES[var]["short_name"] if var in MAPPING_OF_NAMES else var
-    #         for var in must_variables})
-
     if extra_records is not None:
         extra_data = {}
         for lr in extra_records:
@@ -590,16 +642,27 @@ def load_data_from_bsrn_files(
         logger.warning("the retrieved data contains different altitude values "
                        f"({metadata['altitude'].unique()}). This is not expected.")
 
-    allsite_metadata = load_metadata().get(site)
+    allsite_metadata = load_metadata()
+    site_metadata = allsite_metadata.get(site.casefold(), {})
+
+    latitude = site_metadata.get("latitude", metadata["latitude"].iloc[-1] if "latitude" in metadata else None)
+    if latitude is None:
+        raise ValueError("latitude is missing.")
+
+    longitude = site_metadata.get("longitude", metadata["longitude"].iloc[-1] if "longitude" in metadata else None)
+    if longitude is None:
+        raise ValueError("longitude is missing.")
+
+    elevation = site_metadata.get("altitude", metadata["altitude"].iloc[-1] if "altitude" in metadata else None)
+    if elevation is None:
+        logger.warning("elevation is missing. Setting elevation to 0.")
 
     custom_metadata = {}
     custom_metadata["station"] = site.upper()
-    if site.casefold() in allsite_metadata:
-        site_metadata = allsite_metadata[site.casefold()]
-        custom_metadata["location"] = site_metadata.get("station", "unknown")
-        if "location" in site_metadata:
-            province_and_or_country = site_metadata["location"]
-            custom_metadata["location"] = custom_metadata["location"] + f", {province_and_or_country}"
+    custom_metadata["location"] = site_metadata.get("station", "unknown")
+    if "location" in site_metadata:
+        province_and_or_country = site_metadata["location"]
+        custom_metadata["location"] = custom_metadata["location"] + f", {province_and_or_country}"
     custom_metadata["network"] = "BSRN"
     custom_metadata["source"] = "BSRN FTP server via solarpandas"
     custom_metadata["institution"] = "Jose A Ruiz-Arias (solarpandas dev) and BSRN data providers"
@@ -613,9 +676,9 @@ def load_data_from_bsrn_files(
 
     data = SolarDataFrame(
         data,
-        latitude=allsite_metadata["latitude"],
-        longitude=allsite_metadata["longitude"],
-        elevation=allsite_metadata["altitude"],
+        latitude=latitude,
+        longitude=longitude,
+        elevation=elevation,
         custom_metadata=custom_metadata)
 
     if extra_records is not None:
@@ -623,9 +686,9 @@ def load_data_from_bsrn_files(
             if df is not None:
                 extra_data[lr] = SolarDataFrame(
                     df,
-                    latitude=allsite_metadata["latitude"],
-                    longitude=allsite_metadata["longitude"],
-                    elevation=allsite_metadata["altitude"],
+                    latitude=latitude,
+                    longitude=longitude,
+                    elevation=elevation,
                     custom_metadata=custom_metadata)
 
     if not include_metadata:

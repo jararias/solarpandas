@@ -103,33 +103,33 @@ class TestSolarSeriesMetadataPropagation:
         assert df.latitude == LOC["latitude"]
 
 
-class TestSolarSeriesClone:
+class TestSolarSeriesReplaceData:
     def _make(self, meta=None):
         return sp.SolarSeries(DATA, index=IDX, **LOC, custom_metadata=meta or {})
 
-    def test_clone_with_scalar(self):
+    def test_replace_data_with_scalar(self):
         s = self._make()
-        c = s.clone(5.0)
+        c = s.replace_data(5.0)
         assert isinstance(c, sp.SolarSeries)
         assert (c == 5.0).all()
         assert c.latitude == LOC["latitude"]
 
-    def test_clone_with_array(self):
+    def test_replace_data_with_array(self):
         s = self._make()
         arr = np.ones(len(s)) * 3.0
-        c = s.clone(arr)
+        c = s.replace_data(arr)
         assert (c == 3.0).all()
 
-    def test_clone_with_series(self):
+    def test_replace_data_with_series(self):
         s = self._make()
         other = pd.Series(np.ones(len(s)) * 7.0, index=IDX)
-        c = s.clone(other)
+        c = s.replace_data(other)
         assert (c == 7.0).all()
 
-    def test_clone_deep_copies_metadata(self):
+    def test_replace_data_deep_copies_metadata(self):
         meta = {"source": "test"}
         s = self._make(meta=meta)
-        c = s.clone(s)
+        c = s.replace_data(s)
         c.custom_metadata["source"] = "modified"
         assert s.custom_metadata["source"] == "test"
 

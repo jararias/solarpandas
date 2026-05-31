@@ -45,7 +45,7 @@ class QCFlagAccessor:
         """Boolean mask where QC flag equals ``-1`` (failed)."""
         flag = self._series.array.fails.astype(bool)
         if isinstance(self._series, SolarSeries):
-            return self._series.clone(other=flag).rename(self._series.name)
+            return self._series.replace_data(other=flag).rename(self._series.name)
         return pd.Series(flag, index=self._series.index, name=self._series.name)
 
     @property
@@ -53,7 +53,7 @@ class QCFlagAccessor:
         """Boolean mask where QC flag equals ``1`` (passed)."""
         flag = self._series.array.passes.astype(bool)
         if isinstance(self._series, SolarSeries):
-            return self._series.clone(other=flag).rename(self._series.name)
+            return self._series.replace_data(other=flag).rename(self._series.name)
         return pd.Series(flag, index=self._series.index, name=self._series.name)
 
     @property
@@ -61,7 +61,7 @@ class QCFlagAccessor:
         """Boolean mask where QC flag equals ``0`` (not verifiable)."""
         flag = self._series.array.not_verifiable.astype(bool)
         if isinstance(self._series, SolarSeries):
-            return self._series.clone(other=flag).rename(self._series.name)
+            return self._series.replace_data(other=flag).rename(self._series.name)
         return pd.Series(flag, index=self._series.index, name=self._series.name)
 
     def counts(self, skip_nighttime: bool = True, **kwargs) -> pd.Series:

@@ -1,11 +1,9 @@
-r"""Type Validation and Custom Annotated Types.
+r"""Validation helpers and annotated domain types used by solarpandas.
 
-This module provides a framework for robust type validation using Python's 
-`Annotated` types and custom validator classes. It includes validators for 
-regular expressions, fixed choices (with fuzzy matching), and numerical ranges.
-
-The module also defines several domain-specific types for solar geometry 
-and atmospheric data (Latitude, Longitude, SodaStream, etc.).
+This module provides validator classes to validate strings and numeric values,
+plus convenience ``Annotated`` aliases for common geospatial and SoDA inputs.
+The helper :func:`validate_type` executes validator instances attached to an
+annotated alias declared with the ``type`` statement.
 """
 
 import re
@@ -21,48 +19,47 @@ from typing import Annotated, Any, get_args, get_origin
 @dataclass
 class ValidaRegex:
     """Validator for string patterns using regular expressions.
-    
+
     This validator checks if a string matches a specified regex pattern.
     Optionally, a parser function can transform the validated string before
     returning it.
 
-    Args:
-        pattern: The regex pattern to match against. Use raw strings (r"...") 
-            for patterns containing backslashes.
-        parser: An optional callable to transform the value after validation.
-            The function receives the validated string and returns the transformed result.
+    Parameters
+    ----------
+    pattern : str
+        Regex pattern to match. Use raw strings (for example ``r"..."``)
+        for patterns containing backslashes.
+    parser : Callable[[str], str] or None, default None
+        Optional callable applied after successful validation.
 
-    Examples:
-        >>> # Validate email addresses
-        >>> email_validator = ValidaRegex(pattern=r"^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$")
-        >>> email_validator.validate("user@example.com")
-        'user@example.com'
-        
-        >>> # Validate and uppercase
-        >>> code_validator = ValidaRegex(pattern=r"^[A-Z]{3}$", parser=str.upper)
-        >>> code_validator.validate("abc")  # Will be converted to uppercase
-        'ABC'
-        
-        >>> # Invalid input
-        >>> email_validator.validate("not-an-email")  # doctest: +SKIP
-        Traceback (most recent call last):
-        ValueError: not-an-email must match the regex pattern: ...
+    Examples
+    --------
+    >>> validator = ValidaRegex(pattern=r"^[A-Z]{3}$", parser=str.upper)
+    >>> validator.validate("abc")
+    'ABC'
     """
     pattern: str
     parser: Callable[[str], str] | None = None
 
     def validate(self, value: str) -> str:
-        """Validates a string against the regex pattern.
+        """Validate a string against the configured regex pattern.
 
-        Args:
-            value: The string to validate.
+        Parameters
+        ----------
+        value : str
+            Value to validate.
 
-        Returns:
-            The (potentially parsed) string if validation succeeds.
+        Returns
+        -------
+        str
+            Original or parsed string when validation succeeds.
 
-        Raises:
-            TypeError: If the value is not a string.
-            ValueError: If the value does not match the pattern.
+        Raises
+        ------
+        TypeError
+            If ``value`` is not a string.
+        ValueError
+            If ``value`` does not match ``pattern``.
         """
         if not isinstance(value, str):
             raise TypeError(f"{value} must be a string")
@@ -81,54 +78,47 @@ class ValidaChoices:
     matching to correct potential typos. A warning is issued when fuzzy matching
     is used.
 
-    Args:
-        choices: List of allowed string values (canonical forms).
-        parser: An optional callable to transform the value after validation.
+    Parameters
+    ----------
+    choices : list[str]
+        Allowed canonical values.
+    parser : Callable[[str], str] or None, default None
+        Optional callable applied after successful validation.
 
-    Notes:
-        - Matching is case-insensitive: "sparta", "SPARTA", and "Sparta" all match.
-        - Fuzzy matching uses a similarity threshold of 0.4 (40% similarity).
-        - The returned value is always in the canonical form from the choices list.
+    Notes
+    -----
+    Matching is case-insensitive. If no direct case-insensitive match is found,
+    fuzzy matching is attempted with a 0.4 similarity cutoff. Returned values
+    are always canonical entries from ``choices``.
 
-    Examples:
-        >>> # Validate model names
-        >>> model_validator = ValidaChoices(choices=["SPARTA", "BIRD"])
-        >>> model_validator.validate("sparta")  # Case-insensitive
-        'SPARTA'
-        
-        >>> model_validator.validate("BIRD")
-        'BIRD'
-        
-        >>> # Fuzzy matching with warning
-        >>> model_validator.validate("sprata")  # doctest: +SKIP
-        UserWarning: sprata does not match the allowed choices. I took the closest one: SPARTA
-        'SPARTA'
-        
-        >>> # No match found
-        >>> model_validator.validate("INVALID")  # doctest: +SKIP
-        Traceback (most recent call last):
-        ValueError: INVALID is not among the allowed choices: ['SPARTA', 'BIRD']
-        
-        >>> # With parser
-        >>> uppercase_validator = ValidaChoices(choices=["one", "two"], parser=str.upper)
-        >>> uppercase_validator.validate("one")
-        'ONE'
+    Examples
+    --------
+    >>> validator = ValidaChoices(choices=["SPARTA", "BIRD"])
+    >>> validator.validate("sparta")
+    'SPARTA'
     """
     choices: list[str]
     parser: Callable[[str], str] | None = None
 
     def validate(self, value: str) -> str:
-        """Validates a string against the allowed choices.
+        """Validate a string against allowed canonical choices.
 
-        Args:
-            value: The string to validate.
+        Parameters
+        ----------
+        value : str
+            Value to validate.
 
-        Returns:
-            The matched choice in canonical form (corrected via fuzzy matching if necessary).
+        Returns
+        -------
+        str
+            Canonical value from ``choices``.
 
-        Raises:
-            TypeError: If the value is not a string.
-            ValueError: If no close match is found among the choices.
+        Raises
+        ------
+        TypeError
+            If ``value`` is not a string.
+        ValueError
+            If no close match is found.
         """
         if not isinstance(value, str):
             raise TypeError(f"{value} must be a string")
@@ -154,46 +144,28 @@ class ValidaRange:
     inclusive (ge/le) or exclusive (gt/lt) comparisons. Multiple constraints
     can be combined to define precise ranges.
 
-    Args:
-        le: Maximum value (inclusive). Value must be ≤ this limit.
-        lt: Maximum value (exclusive). Value must be < this limit.
-        ge: Minimum value (inclusive). Value must be ≥ this limit.
-        gt: Minimum value (exclusive). Value must be > this limit.
-        parser: An optional callable to transform the value after validation.
+    Parameters
+    ----------
+    le : float or None, default None
+        Inclusive upper bound.
+    lt : float or None, default None
+        Exclusive upper bound.
+    ge : float or None, default None
+        Inclusive lower bound.
+    gt : float or None, default None
+        Exclusive lower bound.
+    parser : Callable[[float], float] or None, default None
+        Optional callable applied after successful validation.
 
-    Notes:
-        - String inputs are automatically converted to float.
-        - Only one upper bound (le or lt) should be specified.
-        - Only one lower bound (ge or gt) should be specified.
-        - Use ge/le for closed intervals: [min, max]
-        - Use gt/lt for open intervals: (min, max)
+    Notes
+    -----
+    String inputs are converted to ``float`` before validation.
 
-    Examples:
-        >>> # Validate percentage (0 to 100, inclusive)
-        >>> percentage = ValidaRange(ge=0, le=100)
-        >>> percentage.validate(50)
-        50.0
-        >>> percentage.validate(100)
-        100.0
-        
-        >>> # Validate latitude (-90 < lat < 90, exclusive)
-        >>> latitude = ValidaRange(gt=-90, lt=90)
-        >>> latitude.validate(45.5)
-        45.5
-        
-        >>> # String conversion
-        >>> percentage.validate("75.5")
-        75.5
-        
-        >>> # Out of range
-        >>> percentage.validate(101)  # doctest: +SKIP
-        Traceback (most recent call last):
-        ValueError: 101 must be less or equal than 100
-        
-        >>> # With parser (double the value)
-        >>> doubler = ValidaRange(ge=0, le=50, parser=lambda x: x * 2)
-        >>> doubler.validate(25)
-        50.0
+    Examples
+    --------
+    >>> percentage = ValidaRange(ge=0, le=100)
+    >>> percentage.validate("75.5")
+    75.5
     """
     le: float | None = None  # less or equal than this
     lt: float | None = None  # less than this
@@ -202,17 +174,24 @@ class ValidaRange:
     parser: Callable[[float], float] | None = None
 
     def validate(self, value: float | int | str ) -> float:
-        """Validates that a number falls within the specified range.
+        """Validate that a number falls within configured bounds.
 
-        Args:
-            value: The numerical value to validate. Strings are converted to float.
+        Parameters
+        ----------
+        value : float or int or str
+            Numeric value to validate. Strings are converted to float.
 
-        Returns:
-            The (potentially parsed) float value.
+        Returns
+        -------
+        float
+            Original or parsed value.
 
-        Raises:
-            TypeError: If the value cannot be converted to a float.
-            ValueError: If the value violates any of the range constraints.
+        Raises
+        ------
+        TypeError
+            If ``value`` cannot be converted to float.
+        ValueError
+            If ``value`` violates any configured constraint.
         """
         try:
             value = float(value)
@@ -231,61 +210,52 @@ class ValidaRange:
         return value
 
 def validate_type(value: Any, annotated_type: Any) -> Any:
-    """Validates a value against an Annotated type definition.
+    """Validate a value against an ``Annotated`` type definition.
 
     This function is the main entry point for type validation. It extracts the
     validator from an `Annotated` type alias and executes its `validate` method.
     
     This enables declarative type validation using Python's type hints system.
 
-    Args:
-        value: The value to be validated. Can be of any type.
-        annotated_type: A type alias defined with `Annotated[base_type, Validator(...)]`.
-            Must be created using the `type` statement with an `Annotated` type.
+    Parameters
+    ----------
+    value : Any
+        Value to validate.
+    annotated_type : Any
+        Alias defined as ``Annotated[base_type, Validator(...)]`` using the
+        ``type`` statement.
 
-    Returns:
-        The validated (and possibly transformed) value. Returns None if the input 
-        value is None (allows for optional parameters).
+    Returns
+    -------
+    Any
+        Validated value, possibly transformed by the validator. If ``value`` is
+        ``None``, ``None`` is returned.
 
-    Raises:
-        TypeError: If the provided `annotated_type` is not a valid `Annotated` type.
-        ValueError: If validation fails (specific message depends on the validator).
+    Raises
+    ------
+    TypeError
+        If ``annotated_type`` is not a valid ``Annotated`` alias.
+    ValueError
+        If validator checks fail.
 
-    Examples:
-        >>> # Using predefined type aliases
-        >>> validate_type(40.4, Latitude)
-        40.4
-        
-        >>> validate_type(-3.7, Longitude)
-        -3.7
-        
-        >>> # Model name validation (case-insensitive)
-        >>> validate_type("sparta", Model)
-        'SPARTA'
-        
-        >>> # None values pass through
-        >>> validate_type(None, Latitude) is None
-        True
-        
-        >>> # Invalid latitude
-        >>> validate_type(95, Latitude)  # doctest: +SKIP
-        Traceback (most recent call last):
-        ValueError: 95 must be less than 90
-        
-        >>> # Custom type alias
-        >>> type Percentage = Annotated[float, ValidaRange(ge=0, le=100)]
-        >>> validate_type(75.5, Percentage)
-        75.5
+    Examples
+    --------
+    >>> validate_type(40.4, Latitude)
+    40.4
+    >>> validate_type("PT01H", SodaTimeStep)
+    'PT01H'
 
-    See Also:
-        - Latitude: Validates latitude coordinates (-90° < lat < 90°)
-        - Longitude: Validates longitude coordinates (-180° ≤ lon < 180°)
-        - Elevation: Validates elevation/altitude (-450m < elev < 8900m)
-        - Model: Validates model names (SPARTA, BIRD)
+    See Also
+    --------
+    Latitude
+    Longitude
+    Elevation
+    SodaTimeStep
 
-    Notes:
-        The function expects a type alias declared with the ``type`` statement,
-        for example ``type Latitude = Annotated[float, ValidaRange(...)]``.
+    Notes
+    -----
+    The function expects aliases created with ``type`` (PEP 695), for example
+    ``type Latitude = Annotated[float, ValidaRange(...)]``.
     """
     if value is not None:
         anntype_value = annotated_type.__value__
@@ -301,12 +271,11 @@ type Latitude = Annotated[float, ValidaRange(gt=-90, lt=90)]
 
 Validates latitude values in decimal degrees. Range: -90° < lat < 90° (exclusive).
 
-Examples:
-    >>> from solarpandas.validate import validate_type, Latitude
-    >>> validate_type(40.4168, Latitude)  # Madrid
-    40.4168
-    >>> validate_type(-33.8688, Latitude)  # Sydney
-    -33.8688
+Examples
+--------
+>>> from solarpandas.validate import Latitude, validate_type
+>>> validate_type(40.4168, Latitude)
+40.4168
 """
 
 type Longitude = Annotated[float, ValidaRange(ge=-180, lt=180)]
@@ -314,12 +283,11 @@ type Longitude = Annotated[float, ValidaRange(ge=-180, lt=180)]
 
 Validates longitude values in decimal degrees. Range: -180° ≤ lon < 180°.
 
-Examples:
-    >>> from solarpandas.validate import validate_type, Longitude
-    >>> validate_type(-3.7038, Longitude)  # Madrid
-    -3.7038
-    >>> validate_type(151.2093, Longitude)  # Sydney
-    151.2093
+Examples
+--------
+>>> from solarpandas.validate import Longitude, validate_type
+>>> validate_type(-3.7038, Longitude)
+-3.7038
 """
 
 type Elevation = Annotated[float, ValidaRange(gt=-450, lt=8900)]
@@ -328,39 +296,39 @@ type Elevation = Annotated[float, ValidaRange(gt=-450, lt=8900)]
 Validates elevation in meters above sea level. Range: -450m < elev < 8900m.
 Covers from Dead Sea (-430m) to Mt. Everest (8849m).
 
-Examples:
-    >>> from solarpandas.validate import validate_type, Elevation
-    >>> validate_type(667, Elevation)  # Madrid
-    667.0
-    >>> validate_type(0, Elevation)  # Sea level
-    0.0
+Examples
+--------
+>>> from solarpandas.validate import Elevation, validate_type
+>>> validate_type(667, Elevation)
+667.0
 """
 
 type SodaTimeStep = Annotated[str, ValidaChoices(["PT01M", "PT15M", "PT01H", "PT01D", "P01M"])]
 """Temporal resolution for SoDA API requests.
 
-Allowed values (ISO 8601 duration format):
-    - `PT01M`: 1 minute
-    - `PT15M`: 15 minutes  
-    - `PT01H`: 1 hour (hourly)
-    - `PT01D`: 1 day (daily)
-    - `P01M`: 1 month (monthly)
+Notes
+-----
+Allowed values use ISO 8601 duration format: ``PT01M``, ``PT15M``, ``PT01H``,
+``PT01D`` and ``P01M``.
 
-Examples:
-    >>> from solarpandas.validate import validate_type, SodaTimeStep
-    >>> validate_type("PT01H", SodaTimeStep)
-    'PT01H'
+Examples
+--------
+>>> from solarpandas.validate import SodaTimeStep, validate_type
+>>> validate_type("PT01H", SodaTimeStep)
+'PT01H'
 """
 
 type SodaStream = Annotated[str, ValidaChoices(["mcclear", "cams_radiation"])]
 """Available data streams from the SoDA service.
 
-Allowed values:
-    - `mcclear`: McClear clear-sky irradiation model
-    - `cams_radiation`: CAMS all-sky radiation service
+Notes
+-----
+Allowed values are ``mcclear`` (McClear clear-sky model) and
+``cams_radiation`` (CAMS all-sky service).
 
-Examples:
-    >>> from solarpandas.validate import validate_type, SodaStream
-    >>> validate_type("mcclear", SodaStream)
-    'mcclear'
+Examples
+--------
+>>> from solarpandas.validate import SodaStream, validate_type
+>>> validate_type("mcclear", SodaStream)
+'mcclear'
 """

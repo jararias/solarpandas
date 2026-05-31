@@ -1,6 +1,7 @@
-"""Physically-possible limits.
+"""Physically possible limits (PPL) quality-control checks.
 
-Source: ...
+This module implements qcrad physically possible limit tests and plotting
+helpers for global, diffuse and direct irradiance components.
 """
 
 import datashader as ds
@@ -138,12 +139,16 @@ def plot_test(column: str, sdf: SolarDataFrame, **kwargs) -> plt.Axes:
     ax_box = ax.get_window_extent()
 
     title = f"{column.upper()} PPL Test Results"
-    network = sdf.custom_metadata.get("network", None)
-    if network is not None and network.casefold() == "bsrn":
-        station = sdf.custom_metadata.get("station", "unknown station")
-        location = sdf.custom_metadata.get("location", "unknown location")
-        acronym = sdf.custom_metadata.get("acronym", "unknown acronym")
-        title += f" at {station}, {location} ({acronym.upper()}, BSRN)"
+    if "location" in sdf.custom_metadata:
+        title += f" at {sdf.custom_metadata['location']}"
+    if "station" in sdf.custom_metadata:
+        title += f" ({sdf.custom_metadata['station']}"
+        if "network" in sdf.custom_metadata:
+            title += f", {sdf.custom_metadata['network']}"
+        title += ")"
+    else:
+        if "network" in sdf.custom_metadata:
+            title += f" ({sdf.custom_metadata['network']})"
     title += f" (lat={sdf.latitude:.4f}, lon={sdf.longitude:.4f}, alt={sdf.elevation:.0f} m)"
 
     cvs = ds.Canvas(plot_width=int(ax_box.width), plot_height=int(ax_box.height),

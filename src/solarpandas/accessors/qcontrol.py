@@ -308,7 +308,7 @@ class QualityControlAccessor:
             def get_failed(components):
                 return self.failed(tests=_COMPONENT_TO_TEST_MAP.get(component).get(components))
 
-            series = self._sdf.clone(other=0.).iloc[:, 0].astype(np.int8)
+            series = self._sdf.replace_data(other=0.).iloc[:, 0].astype(np.int8)
             series.loc[get_failed("1-component")] = np.int8(1)
             series.loc[get_failed("2-component")] = np.int8(2)
             series.loc[get_failed("3-component")] = np.int8(3)

@@ -168,7 +168,7 @@ def test_K_erl(sdf: SolarDataFrame) -> np.ndarray[np.int8]:
     dif = sdf["dif"]
     sza = sdf.solpos.zenith
     K = sdf.param.K
-    max_value = ghi.clone(1.05).where(sza.lt(75.), 1.10)
+    max_value = ghi.replace_data(1.05).where(sza.lt(75.), 1.10)
 
     # compute where the test fails and where it passes
     notna = ghi.notna() & dif.notna() & K.notna()
@@ -254,12 +254,16 @@ def plot_test(x: str, y: str, sdf: SolarDataFrame, **kwargs) -> plt.Axes:
     ax_box = ax.get_window_extent()
 
     title = f"{y} PPL Test Results"
-    network = sdf.custom_metadata.get("network", None)
-    if network is not None and network.casefold() == "bsrn":
-        station = sdf.custom_metadata.get("station", "unknown station")
-        location = sdf.custom_metadata.get("location", "unknown location")
-        acronym = sdf.custom_metadata.get("acronym", "unknown acronym")
-        title += f" at {station}, {location} ({acronym.upper()}, BSRN)"
+    if "location" in sdf.custom_metadata:
+        title += f" at {sdf.custom_metadata['location']}"
+    if "station" in sdf.custom_metadata:
+        title += f" ({sdf.custom_metadata['station']}"
+        if "network" in sdf.custom_metadata:
+            title += f", {sdf.custom_metadata['network']}"
+        title += ")"
+    else:
+        if "network" in sdf.custom_metadata:
+            title += f" ({sdf.custom_metadata['network']})"
     title += f" (lat={sdf.latitude:.4f}, lon={sdf.longitude:.4f}, alt={sdf.elevation:.0f} m)"
 
     _BOUNDS = {

@@ -3,4 +3,4 @@
 
 # ruff: noqa: F401
 
-from .core import get_database_path, data_availability, load_data, load_metadata
+from .core import clear_cache, data_availability, get_database_path, load_data, load_metadata
