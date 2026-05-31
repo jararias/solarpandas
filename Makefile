@@ -27,3 +27,32 @@ test:
 .PHONY: unit-tests
 unit-tests: test
 
+.PHONY: coverage
+coverage:
+	@mkdir -p reports badges
+	@uv run pytest tests \
+		--cov \
+		--cov-report=term-missing \
+		--cov-report=xml:reports/coverage.xml \
+		--junitxml=reports/junit.xml \
+		-q
+	@uv run genbadge coverage -i reports/coverage.xml -o docs/images/badges/coverage.svg
+	@uv run genbadge tests -i reports/junit.xml -o docs/images/badges/tests.svg
+	@echo "Badges generated in docs/images/badges/"
+
+.PHONY: docs
+docs:
+	@echo "Building documentation with Zensical..."
+	@uv run zensical build --clean
+	@echo "Documentation built successfully in site/ directory"
+	@attr -s com.dropbox.ignored -V 1 site  # instruct dropbox to ignore the .venv folder
+
+.PHONY: docs-serve
+docs-serve:
+	@echo "Serving documentation locally..."
+	@uv run zensical serve --open
+
+.PHONY: docs-clean
+docs-clean:
+	@echo "Cleaning documentation build..."
+	@rm -rf site/
