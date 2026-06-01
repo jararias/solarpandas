@@ -26,59 +26,19 @@ from .types import Elevation, Latitude, Longitude, validate_type
 logger.enable(__name__)
 
 
-def read_csv(filename, **kwargs):
-    """Read a CSV file into a :class:`SolarDataFrame`.
-
-    Parameters
-    ----------
-    filename : str or pathlib.Path
-        Input file path.
-    **kwargs : Any
-        Additional keyword arguments passed to
-        :meth:`SolarDataFrame.read_csv`.
-
-    Returns
-    -------
-    SolarDataFrame
-        Data loaded from ``filename`` with metadata recovered from the first
-        JSON-encoded line.
-
-    Examples
-    --------
-    >>> import solarpandas as sp
-    >>> sdf = sp.read_csv("station_data.csv")
-    >>> isinstance(sdf, sp.SolarDataFrame)
-    True
-    """
-    return SolarDataFrame.read_csv(filename, **kwargs)
-
-
-def read_parquet(filename):
-    """Read a Parquet file into a :class:`SolarDataFrame`.
-
-    Parameters
-    ----------
-    filename : str or pathlib.Path
-        Input file path.
-
-    Returns
-    -------
-    SolarDataFrame
-        Data loaded from ``filename`` with metadata recovered from the Parquet
-        schema metadata under the ``solarpandas`` key.
-
-    Examples
-    --------
-    >>> import solarpandas as sp
-    >>> sdf = sp.read_parquet("station_data.parquet")
-    >>> sdf.latitude
-    37.0
-    """
-    return SolarDataFrame.read_parquet(filename)
+def _epilogue(obj):
+    station = obj.custom_metadata.get("station", "<unknown>")
+    epilogue = f"\n[site={station}"
+    if (network := obj.custom_metadata.get("network", None)) is not None:
+        epilogue += f"/{network}"
+    epilogue += (f" latitude={obj.latitude:.4f}\u00b0"
+                 f" longitude={obj.longitude:.4f}\u00b0"
+                 f" elevation={obj.elevation:.1f} m]")
+    return epilogue
 
 
 class SolarSeries(pd.Series):
-    """One-dimensional solar data series carrying site metadata.
+    """Solar data series carrying site metadata.
 
     Parameters
     ----------
@@ -93,16 +53,9 @@ class SolarSeries(pd.Series):
 
     Notes
     -----
-    Reserved metadata keys are ``latitude``, ``longitude`` and ``elevation``.
+    Metadata are propagated through the custom pandas constructors.
+    ``latitude``, ``longitude`` and ``elevation`` are reserved metadata keys.
     They are managed internally and cannot be provided in ``custom_metadata``.
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> from solarpandas import SolarSeries
-    >>> s = SolarSeries([1.0, 2.0], index=pd.date_range("2024-01-01", periods=2, freq="1h", tz="UTC"), latitude=37.0, longitude=-3.6)
-    >>> s.latitude
-    37.0
     """
     _metadata = ["_latitude", "_longitude", "_elevation", "_custom_metadata"]
 
@@ -168,12 +121,12 @@ class SolarSeries(pd.Series):
     def replace_data(
         self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
     ) -> Self:
-        """Create a copy with identical site metadata and new payload values.
+        """Create a copy with identical site metadata and new data values.
 
         Parameters
         ----------
         other : pandas.Series, pandas.DataFrame, sequence, or scalar number
-            New data payload.
+            New data values.
 
         Returns
         -------
@@ -195,80 +148,15 @@ class SolarSeries(pd.Series):
             return self.__class__(data=copy.copy(other), index=self.index, **kwargs)
         return self.__class__(data=copy.copy(other), **kwargs)
 
-    # def iplot(self, *args, time_ref: str = "lst", **kwargs):
-    #     from .viz_helpers import on_key_pressed_daily_step, onscroll_daily_step
-
-    #     if time_ref.casefold() == "lst":
-    #         df = self.set_axis(self.index + pd.Timedelta(self.site_lon * 4, "min"))
-    #     if time_ref.casefold() in ("tst", "lat"):
-    #         df = self.set_axis(self.sp.true_solar_time)
-    #     ax = super(SynSeries, df).plot(*args, **(kwargs | {"kind": "line"}))
-    #     ax.get_figure().canvas.mpl_connect("scroll_event", onscroll_daily_step)
-    #     ax.get_figure().canvas.mpl_connect("key_press_event", on_key_pressed_daily_step)
-    #     return ax
-
-    # def plot_diurnal(self, *args, **kwargs):
-    #     # from .viz_helpers import MyDateLocator
-    #     from .viz_helpers import MyDateFormatter
-
-    #     df = self.drop_nighttime(max_sza=kwargs.pop("max_sza", 90))
-    #     name = df.columns.drop("times")[0]
-    #     ax = super(SynSeries, df[name]).plot(*args, **(kwargs | {"kind": "line"}))
-    #     # ax.xaxis.set_major_locator(MyDateLocator(12, df.times))
-    #     ax.xaxis.set_major_formatter(MyDateFormatter(df.times))
-    #     return ax
-
-    # def datemap(self, time_ref: str = "lst", **kwargs):
-    #     from matplotlib.dates import DateFormatter
-
-    #     column_name = self.name or "unnamed"
-    #     max_sza = kwargs.pop("max_sza", get_option("max_sza"))
-    #     df = self.to_frame(column_name).where(self.sp.sza < max_sza, float("nan"))
-
-    #     if time_ref.casefold() == "lst":
-    #         df = df.assign(time_ref=df.index + pd.Timedelta(df.site_lon * 4, "min"))
-
-    #     df = (
-    #         df.assign(date=df.time_ref.dt.date, time=df.time_ref.dt.time)
-    #         .drop(columns="time_ref")
-    #         .pivot(index="time", columns="date")
-    #         .get(column_name)
-    #     )
-
-    #     time_to_minutes = lambda t: int(t.hour * 60 + t.minute + t.second / 60)  # noqa: E731
-    #     y = df.index.map(lambda t: np.datetime64(time_to_minutes(t), "m"))
-
-    #     ax = kwargs.pop("ax", pl.gca())
-    #     artist = ax.pcolormesh(df.columns, y, df, **kwargs)
-    #     ax.yaxis.set_major_formatter(DateFormatter("%H:%M"))
-    #     ax.set(
-    #         ylabel={
-    #             "lst": "Local Solar Time",
-    #             "tst": "True Solar Time",
-    #             "lat": "Local Apparent Time",
-    #         }.get(time_ref.casefold(), "Coordinated Universal Time")
-    #     )
-    #     return artist
-
     def __repr__(self):
-        epilogue = (
-            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        )
-        return super().__repr__().removesuffix(epilogue) + epilogue.format(
-            self.latitude, self.longitude, self.elevation
-        )
+        return super().__repr__() + _epilogue(self)
 
     def __str__(self):
-        epilogue = (
-            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        )
-        return super().__str__().removesuffix(epilogue) + epilogue.format(
-            self.latitude, self.longitude, self.elevation
-        )
+        return super().__str__()
 
 
 class SolarDataFrame(pd.DataFrame):
-    """Two-dimensional solar dataset carrying site metadata.
+    """Solar dataframe carrying site metadata.
 
     Parameters
     ----------
@@ -283,16 +171,9 @@ class SolarDataFrame(pd.DataFrame):
 
     Notes
     -----
-    Metadata keys are propagated through the custom pandas constructors used by
-    this class for slicing and transformation operations.
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> from solarpandas import SolarDataFrame
-    >>> df = SolarDataFrame({"ghi": [0.0, 10.0]}, index=pd.date_range("2024-01-01", periods=2, freq="1h", tz="UTC"), latitude=37.0, longitude=-3.6)
-    >>> "ghi" in df.columns
-    True
+    Metadata are propagated through the custom pandas constructors.
+    ``latitude``, ``longitude`` and ``elevation`` are reserved metadata keys.
+    They are managed internally and cannot be provided in ``custom_metadata``.
     """
     _metadata = ["_latitude", "_longitude", "_elevation", "_custom_metadata"]
 
@@ -378,12 +259,12 @@ class SolarDataFrame(pd.DataFrame):
     def replace_data(
         self, other: pd.Series | pd.DataFrame | Sequence[Number] | Number
     ) -> Self:
-        """Create a copy with identical metadata and replaced data payload.
+        """Create a copy with identical metadata and replaced data.
 
         Parameters
         ----------
         other : pandas.Series, pandas.DataFrame, sequence, or scalar number
-            New data payload used to build the cloned object.
+            New data used to build the cloned object.
 
         Returns
         -------
@@ -406,20 +287,10 @@ class SolarDataFrame(pd.DataFrame):
         return self.__class__(data=copy.copy(other), **kwargs)
 
     def __repr__(self):
-        epilogue = (
-            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        )
-        return super().__repr__().removesuffix(epilogue) + epilogue.format(
-            self.latitude, self.longitude, self.elevation
-        )
+        return super().__repr__() + _epilogue(self)
 
     def __str__(self):
-        epilogue = (
-            "\n[latitude={0:.4f}\u00b0 longitude={1:.4f}\u00b0 elevation={2:.1f} m]"
-        )
-        return super().__repr__().removesuffix(epilogue) + epilogue.format(
-            self.latitude, self.longitude, self.elevation
-        )
+        return super().__str__()
 
     def to_csv(self, path: str | Path, **kwargs):
         """Write dataframe and metadata to a CSV file.
@@ -433,10 +304,6 @@ class SolarDataFrame(pd.DataFrame):
             Destination path.
         **kwargs : Any
             Extra keyword arguments passed to ``DataFrame.to_csv``.
-
-        Notes
-        -----
-        Parent directories are created automatically when missing.
         """
         metadata = {
             "latitude": self.latitude,
@@ -464,8 +331,7 @@ class SolarDataFrame(pd.DataFrame):
 
         Notes
         -----
-        Metadata is stored in the Parquet schema metadata under the
-        ``solarpandas`` key as a JSON-encoded payload.
+        Metadata is stored in the Parquet schema metadata.
         """
         metadata = {
             "latitude": self.latitude,

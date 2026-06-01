@@ -254,8 +254,8 @@ class TestSampleData:
         assert -180 <= carpentras_data.longitude < 180
 
     def test_carpentras_has_radiation_columns(self, carpentras_data):
-        # Sample data has at minimum ghi and dni from LR0100
-        expected = {"ghi", "dni"}
+        # Sample data has ghi, dni and dif
+        expected = {"ghi", "dni", "dif"}
         assert expected.issubset(set(carpentras_data.columns))
 
     def test_carpentras_has_datetime_index(self, carpentras_data):

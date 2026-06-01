@@ -1,12 +1,5 @@
 
-"""Top-level package exports and version metadata for solarpandas.
-
-Examples
---------
->>> import solarpandas as sp
->>> sdf = sp.sample_data.load_carpentras_data()
->>> sdf.solpos.zenith.head()
-"""
+"""Top-level package exports and version metadata for solarpandas."""
 
 # ruff: noqa: F401
 
@@ -26,7 +19,8 @@ from .accessors import (
     clear_qc_cache,
     get_qc_cache_info,
 )
-from .base import SolarSeries, SolarDataFrame, read_csv, read_parquet 
+from .base import SolarSeries, SolarDataFrame
+from .iohelpers import read_csv, read_parquet
 from .logtools import enable_logger
 from .mplstyles import register as _register_mplstyles
 

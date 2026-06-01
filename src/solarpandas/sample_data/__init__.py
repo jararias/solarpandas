@@ -5,7 +5,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from ..base import read_parquet  # noqa: F401
+from ..iohelpers import read_parquet  # noqa: F401
 
 logger.disable(__name__)
 logger = logger.opt(colors=True)
@@ -23,8 +23,6 @@ def load_carpentras_data():
     --------
     >>> import solarpandas as sp
     >>> sdf = sp.sample_data.load_carpentras_data()
-    >>> sdf.index.tz is not None
-    True
 
     Notes
     -----

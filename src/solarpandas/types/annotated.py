@@ -49,14 +49,6 @@ type Latitude = Annotated[float, ValidaRange(gt=-90, lt=90)]
 type Longitude = Annotated[float, ValidaRange(ge=-180, le=180)]
 type Elevation = Annotated[float, ValidaRange(gt=-450, lt=8900)]
 
-# type SiteNetwork = Annotated[str, ValidaRegex(r"^[a-z]{3}/(?:bsrn|pvps)$")]
-# type TimeStep = Annotated[str, ValidaRegex(r"^\d+min$")]
-# type Climate = Annotated[str, ValidaRegex(r"^[A-Ea-e]$")]
-# type Network = Annotated[str, ValidaRegex(r"^(?:bsrn|pvps)$")]
-# type Source = Annotated[str, ValidaRegex(r"^(?:obs|synobs|synsat)$")]
-# type PVSystem = Annotated[str, ValidaRegex(r"^(?:hsat|notrack)$")]
-
-
 def validate_type(value, annotated_type):
     """Validate a value against an ``Annotated`` type alias.
 

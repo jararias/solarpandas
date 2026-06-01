@@ -18,7 +18,8 @@ import pandas as pd
 import platformdirs
 from loguru import logger
 
-from ...base import SolarDataFrame, read_parquet
+from ...base import SolarDataFrame
+from ...iohelpers import read_parquet
 from ...config import get_option
 from . import helpers, lr_parsers
 from .types import DataLogicalRecordName, LogicalRecordName, Month, Site, Year, validate_type

@@ -8,9 +8,6 @@ logger.disable(__name__)
 logger = logger.opt(colors=True)
 
 
-# TODO: FUNCION PARA RELLENAR HUECOS
-
-
 def infer_time_step(df_or_s: pd.DataFrame | pd.Series) -> pd.Timedelta | None:
     """Infer the sampling time step from a datetime-like index.
 
@@ -22,7 +19,7 @@ def infer_time_step(df_or_s: pd.DataFrame | pd.Series) -> pd.Timedelta | None:
     Returns
     -------
     pandas.Timedelta or None
-        Inferred step. Returns ``None`` if the frequency cannot be inferred and
+        Inferred step. Returns ``None`` if the time step cannot be inferred and
         no valid time differences are available.
 
     Notes
@@ -43,7 +40,7 @@ def infer_time_step(df_or_s: pd.DataFrame | pd.Series) -> pd.Timedelta | None:
 
 
 def normalize(df_or_s: pd.DataFrame | pd.Series, **kwargs) -> pd.DataFrame | pd.Series:
-    """Reindex data to complete first and last calendar days.
+    """Reindex data to have complete first and last calendar days.
 
     Parameters
     ----------
