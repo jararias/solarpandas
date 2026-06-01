@@ -1,41 +1,28 @@
-# solarpandas
+# solarpandas: pandas for solar resource assessment
 
-solarpandas is a pandas-first toolkit for solar irradiance time series.
-It provides:
+solarpandas is a personal project that integrates under a common framework multiple models and libraries that I have developed throughout my research career and standard methods in solar resource modeling.
 
-- Data containers with site metadata (latitude, longitude, elevation)
-- Fast accessors for solar position and clear-sky irradiance
-- BSRN data retrieval and parsing utilities
-- Built-in quality-control workflows (qcrad-style checks)
-- Plotting helpers specialized for solar datasets
+## Main features
 
-## Main Features
+- solarpandas subclasses Pandas Series and DataFrame classes adding site location metadata (latitude, longitude, elevation) and free general-purpose custom metadata.
 
-- Metadata-aware containers:
-  - SolarSeries
-  - SolarDataFrame
-- Solar position via sunwhere:
-  - zenith, azimuth, sunrise/sunset, true solar time, and more
-- Clear-sky irradiance via spartasolar:
-  - ghi, dni, dif, csi
-- BSRN support:
-  - inspect remote availability
-  - load station metadata
-  - load and cache measurement records
-- Quality control:
-  - physically possible and extremely rare limits
-  - closure and tracker-related checks
-- Solar plots:
-  - diurnal views
-  - date-time heatmaps
+- It provides fast accessors for key aspects of solar resource modeling, such as calculation of solar position (via [sunwhere](https://github.com/jararias/sunwhere)) and clear-sky irradiance (via [sparta-solar](https://github.com/jararias/sparta-solar)).
 
-## Quick Start
+- solarpandas is shipped with BSRN high-level data retrieval and parsing utilities.
+
+- It has built-in quality-control workflows enhanced with a tailored qc-specific ExtensionDType.
+
+- It provides specialized plotting helpers for solar datasets through the ``.solarplot`` accessor.
+
+- solarpandas makes extensive use of disk and memory caching strategies to speed up workflows.
+
+## Quick Snippets
 
 ```python
 import solarpandas as sp
 ```
 
-## BSRN: Availability, Metadata, and Data Loading
+### BSRN: Availability, Metadata, and Data Loading
 
 ```python
 from solarpandas.origin.bsrn import data_availability, load_metadata, load_data
