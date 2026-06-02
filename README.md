@@ -12,9 +12,9 @@ import solarpandas as sp
 sdf = sp.SolarSeries(
     data=...,  # as in pandas Series
     index=...,  # a sequence of datetimes, as required by pandas Series
-    latitude=37.5,  # mandatory in solarpandas
-    longitude=-3.5,  # mandatory in solarpandas
-    elevation=900,  # if not providad, set to 0 meters above mean sea level
+    latitude=36.949,  # mandatory in solarpandas
+    longitude=-3.823,  # mandatory in solarpandas
+    elevation=914,  # if not providad, set to 0 meters above mean sea level
     custom_metadata={  # optional, free format following json standard rules
         "site": "Jayena",
         "network": "my-network",
