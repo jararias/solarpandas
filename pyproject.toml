@@ -28,7 +28,7 @@ dependencies = [
     "platformdirs>=4.9.6",
     "pyarrow>=24.0.0",
     "sparta-solar>=0.1.0",
-    "sunwhere>=1.4.0",
+    "sunwhere>=1.4.1",
     "tomlkit>=0.15.0",
 ]
 
