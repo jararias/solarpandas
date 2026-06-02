@@ -97,3 +97,15 @@ fig2 = sdf.solarplot.heatmap(column="ghi", time_ref="tst", twilight_line=True)
 ```
 
 - as illustrated in the previous examples, solarpandas makes extensive use of disk and memory caching strategies to speed up workflows.
+
+## Installation
+
+```bash
+pip install solarpandas
+```
+
+```bash
+uv add solarpandas
+```
+
+Find further details in the [documentation](https://jararias.github.io/solarpandas).
