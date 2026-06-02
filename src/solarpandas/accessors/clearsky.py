@@ -76,6 +76,8 @@ class BaseClearskyIrradianceAccessor:
         self._atmosphere = get_option("clearsky.atmosphere", default="crs_soda")
         if not hasattr(spartasolar.atmosphere, self._atmosphere):
             raise ValueError(f"invalid clearsky atmosphere `{self._atmosphere}`")
+        logger.debug(f"initialized {self.__class__.__name__} with `{self._model}` "
+                     f"model and `{self._atmosphere}` atmosphere")
 
     @staticmethod
     def _validate(obj):
@@ -85,6 +87,9 @@ class BaseClearskyIrradianceAccessor:
         return obj
 
     def _get_cached_clearsky(self, variable: Literal["ghi", "dni", "dif", "csi"]):
+        logger.debug(f"retrieving `{variable}` from clearsky cache for site at "
+                     f"({self._sdf.latitude}, {self._sdf.longitude}) and {len(self._sdf.index)} timestamps...")
+        logger.debug(f"{self._sdf.index}")
         # To speed up the cache lookup, we convert the times to bytes and use them as part
         # of the cache key (see related notes in the solpos accessor).
         # The numpy datetime64[ns] type does not have timezone information, so we need to
@@ -105,6 +110,7 @@ class BaseClearskyIrradianceAccessor:
         return SolarSeries(
             clearsky[variable].isel(site=0).to_pandas().values,
             index=self._sdf.index,
+            name=variable,
             latitude=self._sdf.latitude,
             longitude=self._sdf.longitude,
             elevation=self._sdf.elevation,
@@ -147,7 +153,7 @@ class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
         self,
         atmosphere: Literal["merra2_daily", "merra2_gee", "merra2_lta", "crs_soda", "custom"],
         model: str = "SPARTA"
-    ):
+    ) -> SolarDataFrame:
         """Compute clear-sky irradiance once without using cache.
 
         Parameters
@@ -159,8 +165,7 @@ class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
 
         Returns
         -------
-        Any
-            Xarray-like object returned by ``spartasolar``.
+        SolarDataFrame
         """
         logger.debug(f"evaluating clearsky with `{model}` model and `{atmosphere}` atmosphere...")
         if not hasattr(spartasolar.atmosphere, atmosphere):
@@ -169,12 +174,15 @@ class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
             raise NotImplementedError("TODO: implement support for user-provided custom "
                                       "atmosphere datasets from dataframe columns")
         atmos_obj = getattr(spartasolar.atmosphere, atmosphere)
-        args = (self._sdf.index, self._sdf.latitude, self._sdf.longitude)
+        args = (self._sdf.index.tz_convert("UTC").tz_localize(None),
+                self._sdf.latitude,
+                self._sdf.longitude)
         try:
-            return atmos_obj.at_site(*args).compute(model)
+            xa_result = atmos_obj.at_site(*args).compute(model)
         except AttributeError:
-            return atmos_obj.at_sites(*args).compute(model)
-
+            xa_result = atmos_obj.at_sites(*args).compute(model)
+        df_result = xa_result.isel(site=0).drop_vars(["lat", "lon", "site"]).to_dataframe()
+        return self._sdf.replace_data(df_result)
 
 @pd.api.extensions.register_series_accessor("lta")
 @pd.api.extensions.register_dataframe_accessor("lta")

@@ -27,8 +27,9 @@ logger.enable(__name__)
 
 
 def _epilogue(obj):
-    station = obj.custom_metadata.get("station", "<unknown>")
-    epilogue = f"\n[site={station}"
+    if (site := obj.custom_metadata.get("site", None)) is None:
+        site = obj.custom_metadata.get("station", "<unknown>")
+    epilogue = f"\n[site={site}"
     if (network := obj.custom_metadata.get("network", None)) is not None:
         epilogue += f"/{network}"
     epilogue += (f" latitude={obj.latitude:.4f}\u00b0"

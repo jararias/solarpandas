@@ -83,15 +83,20 @@ def _decode_bsrn_two_digit_year(yy: int, current_year: int | None = None) -> int
 
 
 def _availability_to_year_table(
-    availability: dict[str, list[str]], fill_char: str = "#"
+    availability: dict[str, list[str]], fill_char: str = "#", transposed: bool = False
 ) -> str:
-    """Build a text table with one row per site and one column per year.
+    """Build a text table of BSRN data availability.
 
     A filled cell means at least one monthly file is available for that
     site/year; an empty cell means no files for that site/year.
 
-    The yearly axis is rendered in a compact form with one character per year.
-    Header labels are shown in two vertical rows (YY) every 5 years.
+    When ``transposed`` is ``False`` (default), each row is a site and each
+    column is a year. The yearly axis uses one character per year with header
+    labels every 5 years shown in two rows (YY).
+
+    When ``transposed`` is ``True``, each row is a year (ascending) and each
+    column is a site. The site acronyms are displayed vertically in a
+    three-row header.
     """
     if len(fill_char) != 1:
         raise ValueError("fill_char must be a single character")
@@ -104,7 +109,7 @@ def _availability_to_year_table(
     for site, filenames in availability.items():
         site_years = years_by_site.setdefault(site, set())
         for filename in filenames:
-            if not (match := file_pattern.match(filename)): 
+            if not (match := file_pattern.match(filename)):
                 continue
             if match.group("site_dir").lower() != match.group("site_file").lower():
                 continue
@@ -114,6 +119,21 @@ def _availability_to_year_table(
     all_years = sorted({year for years in years_by_site.values() for year in years})
     if not all_years:
         return "No BSRN data availability found."
+
+    if transposed:
+        all_sites = sorted(years_by_site.keys())
+        year_col_width = 4
+        # Three-row header with site acronym written vertically (one char per row)
+        header_rows = [
+            f"{'':<{year_col_width}} | {''.join(site[i].upper() for site in all_sites)} | {'':<{year_col_width}}"
+            for i in range(3)
+        ]
+        separator = f"{'-' * year_col_width}-+-{'-' * len(all_sites)}-+-{'-' * year_col_width}"
+        rows = [
+            f"{year} | {''.join(fill_char if year in years_by_site.get(site, set()) else ' ' for site in all_sites)} | {year}"
+            for year in all_years
+        ]
+        return "\n".join(header_rows + [separator] + rows + [separator] + header_rows)
 
     site_col_width = max(4, max(len(site) for site in years_by_site))
 
@@ -148,6 +168,7 @@ def data_availability(
     update: Literal["auto"] | bool = "auto",
     as_year_table: bool = False,
     fill_char: str = "#",
+    transposed: bool = False,
     year_table_output: str | Path | None = None,
 ) -> dict[str, list[str]] | str:
     """Inspect the availability of BSRN data on the remote FTP server.
@@ -164,10 +185,15 @@ def data_availability(
         cache is refreshed when older than 7 days.
     as_year_table : bool, default False
         If ``True``, return a plain-text table with one row per site and one
-        column per year.
+        column per year (or transposed when ``transposed=True``).
     fill_char : str, default "#"
         Character used to mark years with available data in the annual table.
         Must be a single character.
+    transposed : bool, default False
+        If ``True``, the year table is transposed: each row is a year in
+        ascending order and each column is a site. Site acronyms are shown
+        vertically in a three-row header. Has no effect when
+        ``as_year_table`` is ``False``.
     year_table_output : str or pathlib.Path or None, default None
         Optional output path to persist the annual table as a text file. The
         table is generated when this argument is provided, even if
@@ -208,7 +234,7 @@ def data_availability(
 
     year_table = None
     if as_year_table or year_table_output is not None:
-        year_table = _availability_to_year_table(availability, fill_char=fill_char)
+        year_table = _availability_to_year_table(availability, fill_char=fill_char, transposed=transposed)
 
     if year_table_output is not None:
         output_path = Path(year_table_output)
