@@ -1,14 +1,62 @@
 # solarpandas: pandas for solar resource assessment
 
-solarpandas is a personal project that integrates under a common framework multiple models and libraries that I have developed throughout my research career and standard methods in solar resource modeling.
+solarpandas is a personal project that I have been developing and using in my own research for years. It integrates under a common framework both standard methods in solar resource modeling and libraries and models that I have developed. The uncomparable extensibility of pandas is the perfect framework for it. The result is an advanced, modern and sophisticated library that combines the unique power and verstility of pandas with the most important methods in solar resource modeling.
 
 ## Main features
 
-- solarpandas subclasses Pandas Series and DataFrame classes adding site location metadata (latitude, longitude, elevation) and free general-purpose custom metadata.
+- solarpandas subclasses the Pandas Series and DataFrame classes adding site location metadata (latitude, longitude, elevation) and free general-purpose custom metadata.
+
+```python
+import solarpandas as sp
+
+sdf = sp.Series(
+    data=...,  # as in pandas Series
+    index=...,  # a sequence of datetimes, as required by pandas Series
+    latitude=37.5,  # mandatory in solarpandas
+    longitude=-3.5,  # mandatory in solarpandas
+    elevation=900,  # if not providad, set to 0 meters above mean sea level
+    custom_metadata={  # optional, free format following json standard rules
+        "site": "Jayena",
+        "network": "my-network",
+        "time_alignment": "center",
+    }
+)
+
+print(sdf.head())
+
+# metadata has to provided only once. They are automatically 
+# propagated afterwards by internal methods in pandas.
+```
 
 - It provides fast accessors for key aspects of solar resource modeling, such as calculation of solar position (via [sunwhere](https://github.com/jararias/sunwhere)) and clear-sky irradiance (via [sparta-solar](https://github.com/jararias/sparta-solar)).
 
+```python
+sdf = sp.SolarDataFrame(...)
+sdf.solpos.zenith  # memory-cached solar zenith angle
+sdf.solpos.sunrise(units="utc")  # memory-cached sunrise time, UTC
+sdf.lta.ghi  # memory-cached ghi assuming a long-term average clear-sky atmosphere (dni, dif, dir and csi also available)
+sdf.cda.ghi  # as the previous but for a clean and dry atmosphere
+sdf.clearsky.ghi  # as the previous but using a preset clear-sky atmosphere from those available in sparta-solar
+sdf.clearsky.compute(atmos="crs_soda", model="SPARTA")  # ad-hoc non-cached calculation of clear sky fluxes
+```
+
 - solarpandas is shipped with BSRN high-level data retrieval and parsing utilities.
+
+```python
+from solarpandas.origin.bsrn import data_availability, load_metadata, load_data
+
+# 1) Inspect remote availability (cached locally)
+year_table = data_availability(update="auto", as_year_table=True)
+print(year_table)
+
+# 2) Load station metadata (cached locally)
+meta = load_metadata(update="auto")
+print(meta.get("car", {}))  # Carpentras example
+
+# 3) Load BSRN measurements for one station/year
+sdf = load_data(site="car", years=2016, logical_record="LR0100", group="essential")
+print(sdf.head())
+```
 
 - It has built-in quality-control workflows enhanced with a tailored qc-specific ExtensionDType.
 
