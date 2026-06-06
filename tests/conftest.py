@@ -1,10 +1,12 @@
+import matplotlib
+
+matplotlib.use("Agg")  # headless backend — must be set before pyplot is imported
 
 import numpy as np
 import pandas as pd
 import pytest
 
 import solarpandas as sp
-
 
 CAR_LAT = 44.083
 CAR_LON = 5.059
@@ -48,6 +50,7 @@ def solar_dataframe(times_1day, location):
 @pytest.fixture(scope="session")
 def carpentras_data():
     from solarpandas.sample_data import load_carpentras_data
+
     data = load_carpentras_data()
     day = data.loc[DAY]
     # Localize tz-naive index to UTC so solpos accessor works

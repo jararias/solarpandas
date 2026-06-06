@@ -1,14 +1,20 @@
-
-import numpy as np
 import pandas as pd
 import pytest
 
 import solarpandas as sp
 
 EXPECTED_TESTS = [
-    "ghi_ppl", "dif_ppl", "dni_ppl",
-    "ghi_erl", "dif_erl", "dni_erl",
-    "Kn_ppl", "Kn_erl", "KT_erl", "K_erl", "K_erl_clear",
+    "ghi_ppl",
+    "dif_ppl",
+    "dni_ppl",
+    "ghi_erl",
+    "dif_erl",
+    "dni_erl",
+    "Kn_ppl",
+    "Kn_erl",
+    "KT_erl",
+    "K_erl",
+    "K_erl_clear",
     "closure",
     "trackeroff",
 ]
@@ -61,6 +67,7 @@ class TestQCValues:
 
     def test_ghi_ppl_qcflag_dtype(self, carpentras_data):
         from solarpandas.types import QCFlagDtype
+
         result = carpentras_data.qc["ghi_ppl"]
         assert isinstance(result.dtype, QCFlagDtype)
 
@@ -71,7 +78,15 @@ class TestQCFilter:
         assert isinstance(filtered, pd.DataFrame)
         assert len(filtered.columns) > 0
         for col in filtered.columns:
-            assert "ghi" in col or col in ("Kn_ppl", "Kn_erl", "KT_erl", "K_erl", "K_erl_clear", "trackeroff", "closure")
+            assert "ghi" in col or col in (
+                "Kn_ppl",
+                "Kn_erl",
+                "KT_erl",
+                "K_erl",
+                "K_erl_clear",
+                "trackeroff",
+                "closure",
+            )
 
     def test_filter_by_dni_component(self, carpentras_data):
         filtered = carpentras_data.qc.filter("dni")
@@ -164,3 +179,71 @@ class TestQCCache:
         _ = carpentras_data.qc.failed()
         info_second = sp.get_qc_cache_info()
         assert info_second["hits"] > info_first["hits"]
+
+
+class TestQCFlagAccessor:
+    """Tests for the .flag accessor on Series with QCFlagDtype."""
+
+    @pytest.fixture
+    def flag_series(self, carpentras_data):
+        return carpentras_data.qc["ghi_ppl"]
+
+    def test_accessor_unavailable_on_plain_series(self, carpentras_data):
+        with pytest.raises(AttributeError):
+            carpentras_data["ghi"].flag  # noqa: B018
+
+    def test_fails_is_boolean_series(self, flag_series):
+        assert flag_series.flag.fails.dtype == bool
+
+    def test_passes_is_boolean_series(self, flag_series):
+        assert flag_series.flag.passes.dtype == bool
+
+    def test_not_verifiable_is_boolean_series(self, flag_series):
+        assert flag_series.flag.not_verifiable.dtype == bool
+
+    def test_fails_length_matches_source(self, flag_series):
+        assert len(flag_series.flag.fails) == len(flag_series)
+
+    def test_passes_length_matches_source(self, flag_series):
+        assert len(flag_series.flag.passes) == len(flag_series)
+
+    def test_not_verifiable_length_matches_source(self, flag_series):
+        assert len(flag_series.flag.not_verifiable) == len(flag_series)
+
+    def test_categories_are_mutually_exclusive(self, flag_series):
+        fails = flag_series.flag.fails
+        passes = flag_series.flag.passes
+        not_verifiable = flag_series.flag.not_verifiable
+        assert not (fails & passes).any(), "Some rows are both failed and passed"
+        assert not (fails & not_verifiable).any(), (
+            "Some rows are both failed and not_verifiable"
+        )
+        assert not (passes & not_verifiable).any(), (
+            "Some rows are both passed and not_verifiable"
+        )
+
+    def test_categories_are_exhaustive(self, flag_series):
+        fails = flag_series.flag.fails
+        passes = flag_series.flag.passes
+        not_verifiable = flag_series.flag.not_verifiable
+        assert (fails | passes | not_verifiable).all(), (
+            "Some rows fall into no category"
+        )
+
+    def test_counts_returns_series(self, flag_series):
+        counts = flag_series.flag.counts(skip_nighttime=False)
+        assert isinstance(counts, pd.Series)
+
+    def test_counts_sum_equals_length(self, flag_series):
+        counts = flag_series.flag.counts(skip_nighttime=False)
+        assert counts.sum() == len(flag_series)
+
+    def test_counts_skip_nighttime_default(self, flag_series):
+        counts_day = flag_series.flag.counts(skip_nighttime=True)
+        counts_all = flag_series.flag.counts(skip_nighttime=False)
+        assert counts_day.sum() <= counts_all.sum()
+
+    def test_counts_index_contains_flag_names(self, flag_series):
+        counts = flag_series.flag.counts(skip_nighttime=False)
+        valid = {"FAILED", "PASSED", "NOT_VERIFIABLE"}
+        assert set(counts.index).issubset(valid)
