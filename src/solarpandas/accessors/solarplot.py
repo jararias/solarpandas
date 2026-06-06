@@ -1,4 +1,3 @@
-
 """Plotting utilities and scales for solar data visualization."""
 
 from typing import Callable, Literal
@@ -133,14 +132,18 @@ class _DiurnalScale(ScaleBase):
         super().__init__(axis)
         self._mapper = mapper
         self._base_locator = locator or mpl.dates.AutoDateLocator()
-        self._base_formatter = formatter or mpl.dates.AutoDateFormatter(self._base_locator)
+        self._base_formatter = formatter or mpl.dates.AutoDateFormatter(
+            self._base_locator
+        )
 
     def get_transform(self):
         return _DiurnalTransform(self._mapper)
 
     def set_default_locators_and_formatters(self, axis):
         axis.set_major_locator(_DiurnalDateLocator(self._mapper, self._base_locator))
-        axis.set_major_formatter(_DiurnalDateFormatter(self._mapper, self._base_formatter))
+        axis.set_major_formatter(
+            _DiurnalDateFormatter(self._mapper, self._base_formatter)
+        )
 
     def limit_range_for_scale(self, vmin, vmax, minpos):
         return vmin, vmax
@@ -168,7 +171,9 @@ class SolarPlotAccessor:
     def _validate(obj):
         if not isinstance(obj, (SolarSeries, SolarDataFrame)):
             name = obj.__class__.__name__
-            raise AttributeError(f"required a SolarSeries or SolarDataFrame instance. Got {name}")
+            raise AttributeError(
+                f"required a SolarSeries or SolarDataFrame instance. Got {name}"
+            )
         return obj
 
     def diurnal(
@@ -177,7 +182,7 @@ class SolarPlotAccessor:
         max_sza: float = 95.0,
         locator=None,
         formatter=None,
-        **kwargs
+        **kwargs,
     ) -> plt.Figure:
         """Plot one or more variables on a compressed daytime-only timeline.
 
@@ -211,7 +216,9 @@ class SolarPlotAccessor:
             elif isinstance(column, (list, tuple)):
                 columns = list(column)
             else:
-                raise TypeError("`column` must be a string, a list/tuple of strings, or None.")
+                raise TypeError(
+                    "`column` must be a string, a list/tuple of strings, or None."
+                )
 
             missing = [c for c in columns if c not in self._sdf.columns]
             if missing:
@@ -252,7 +259,7 @@ class SolarPlotAccessor:
         twilight_line: bool = False,
         twilight_line_kwargs: dict | None = None,
         aggfunc: str | Callable = "mean",
-        **kwargs
+        **kwargs,
     ) -> plt.Figure:
         """Render a date-time heatmap for a selected variable.
 
@@ -296,14 +303,20 @@ class SolarPlotAccessor:
             sdf = self._sdf.to_frame(column)
         else:
             if column is None:
-                logger.warning("No column specified for plotting. Defaulting to the first column.")
+                logger.warning(
+                    "No column specified for plotting. Defaulting to the first column."
+                )
                 column = self._sdf.columns[0]
             elif column not in self._sdf.columns:
-                logger.warning(f"Column '{column}' not found in dataframe. Defaulting to the first column.")
+                logger.warning(
+                    f"Column '{column}' not found in dataframe. Defaulting to the first column."
+                )
                 column = self._sdf.columns[0]
             sdf = self._sdf[[column]]
 
-        df = pd.DataFrame(sdf.where(self._sdf.solpos.zenith < (max_sza or 180.), pd.NA))
+        df = pd.DataFrame(
+            sdf.where(self._sdf.solpos.zenith < (max_sza or 180.0), pd.NA)
+        )
 
         # extend the dataframe to have a complete first and last days
         df = normalize(df)
@@ -320,9 +333,9 @@ class SolarPlotAccessor:
         if time_ref.casefold() in ("lst", "tst", "lat"):
             df = df.set_index(df.index.round(time_step))
 
-        table = (
-            df.assign(date=df.index.date, time=df.index.time)
-            .pivot_table(index="time", columns="date", values=column, aggfunc=aggfunc))
+        table = df.assign(date=df.index.date, time=df.index.time).pivot_table(
+            index="time", columns="date", values=column, aggfunc=aggfunc
+        )
 
         date_coords = table.columns
         time_coords = table.index.map(lambda t: np.datetime64(time_to_minutes(t), "m"))
@@ -336,23 +349,46 @@ class SolarPlotAccessor:
 
         mesh = ax.pcolormesh(date_coords, time_coords, table.values, **kwargs)
         if colorbar:
-            plt.colorbar(mesh, ax=ax, label=colorbar_title or column, pad=0.01,
-                         fraction=0.025, shrink=1.0)
+            plt.colorbar(
+                mesh,
+                ax=ax,
+                label=colorbar_title or column,
+                pad=0.01,
+                fraction=0.025,
+                shrink=1.0,
+            )
 
         if twilight_line:
 
             def get_twilight(which: str):
-                twilight = (getattr(self._sdf.solpos, which)(units=time_ref)
-                            .resample("D").median()
-                            .dt.round("1s")
-                            .dt.time.map(lambda t: np.datetime64(time_to_minutes(t), "m")))
+                twilight = (
+                    getattr(self._sdf.solpos, which)(units=time_ref)
+                    .resample("D")
+                    .median()
+                    .dt.round("1s")
+                    .dt.time.map(lambda t: np.datetime64(time_to_minutes(t), "m"))
+                )
                 twilight = twilight.set_axis(twilight.index.date)
-                return twilight.reindex(date_coords, method="nearest", tolerance=pd.Timedelta("1D"))
+                return twilight.reindex(
+                    date_coords, method="nearest", tolerance=pd.Timedelta("1D")
+                )
 
             default_twilight_kwargs = {"color": "purple", "ls": "--", "lw": 1.5}
-            twilight_line_kwargs = default_twilight_kwargs | (twilight_line_kwargs or {})
-            ax.plot(date_coords, get_twilight("sunrise"), label="Sunrise", **twilight_line_kwargs)
-            ax.plot(date_coords, get_twilight("sunset"), label="Sunset", **twilight_line_kwargs)
+            twilight_line_kwargs = default_twilight_kwargs | (
+                twilight_line_kwargs or {}
+            )
+            ax.plot(
+                date_coords,
+                get_twilight("sunrise"),
+                label="Sunrise",
+                **twilight_line_kwargs,
+            )
+            ax.plot(
+                date_coords,
+                get_twilight("sunset"),
+                label="Sunset",
+                **twilight_line_kwargs,
+            )
 
         ax.set_xlabel("Date")
 
@@ -361,3 +397,200 @@ class SolarPlotAccessor:
         ax.set_ylabel(MAP_OF_YLABELS.get(time_ref.casefold()))
 
         return ax.get_figure()
+
+    def rolling(
+        self,
+        column: str | list[str] | tuple[str, ...] | None = None,
+        step: int = 1,
+        window_size: int = 1,
+        max_sza: float = 95.0,
+        y_scale: Literal["per_day", "global"] = "per_day",
+        plot_kwargs: dict[str, dict] | None = None,
+        **kwargs,
+    ) -> plt.Figure:
+        """Plot a time series with a rolling window of a given size.
+
+        Parameters
+        ----------
+        column : str, list[str], tuple[str, ...], or None, default None
+            Column(s) to plot for dataframe inputs. Ignored for series inputs.
+            When ``None`` all columns are shown.
+        step : int, default 1
+            Number of days to navigate when using the left/right arrow keys or
+            mouse scroll.
+        window_size : int, default 1
+            Number of consecutive days shown in the plot area at once.
+        max_sza : float, default 95.0
+            Maximum solar zenith angle of the data to plot. Timestamps with
+            SZA above this threshold are excluded.
+        y_scale : {"per_day", "global"}, default "per_day"
+            Y-axis scaling strategy.
+            ``"per_day"`` autoscales the y-axis to the data visible in the
+            current window on every navigation step.
+            ``"global"`` fixes the y-axis to the range of the full dataset
+            and keeps it constant while navigating.
+        plot_kwargs : dict[str, dict] or None, default None
+            Per-column matplotlib keyword arguments. Keys are column names;
+            values are dicts of kwargs forwarded to ``Axes.plot`` for that
+            specific line. Columns absent from this dict inherit ``**kwargs``.
+        **kwargs : Any
+            Global keyword arguments forwarded to ``Axes.plot`` for every
+            line. Per-column entries in *plot_kwargs* take precedence.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Interactive figure. Use left/right arrow keys or mouse wheel to
+            navigate between days.
+
+        Examples
+        --------
+        >>> fig = sdf.solarplot.rollingday(
+        ...     column=["ghi", "dni"],
+        ...     window_size=3,
+        ...     plot_kwargs={
+        ...         "ghi": {"color": "gold", "lw": 2.0},
+        ...         "dni": {"color": "tomato", "ls": "--"},
+        ...     },
+        ...     lw=1.0,
+        ... )
+        >>> plt.show()
+        """
+
+        if window_size < 1:
+            raise ValueError("`window_size` must be >= 1")
+
+        # 1. Resolve columns
+        if isinstance(self._sdf, SolarSeries):
+            if column is not None:
+                logger.warning("Column name(s) ignored when plotting a SolarSeries.")
+            columns = [self._sdf.name or "_unnamed_"]
+            sdf = self._sdf.to_frame(columns[0])
+        else:
+            if column is None:
+                columns = list(self._sdf.columns)
+            elif isinstance(column, str):
+                columns = [column]
+            elif isinstance(column, (list, tuple)):
+                columns = list(column)
+            else:
+                raise TypeError(
+                    "`column` must be a string, a list/tuple of strings, or None."
+                )
+
+            missing = [c for c in columns if c not in self._sdf.columns]
+            if missing:
+                logger.warning(
+                    f"Columns {missing} not found in dataframe. Skipping them."
+                )
+                columns = [c for c in columns if c in self._sdf.columns]
+            if not columns:
+                raise ValueError("No valid columns to plot.")
+            sdf = self._sdf[columns]
+
+        # 2. Pre-compute SZA and time step
+        sza = self._sdf.solpos.zenith
+        step_days = float(pd.to_timedelta(infer_time_step(sdf)) / pd.Timedelta("1D"))
+
+        # in order to show entire "solar" days I need to set the time index in true
+        # solar time coordinates. Otherwise, data from sites far from the prime meridian
+        # would have their solar days split across two calendar days
+        sdf = sdf.set_index(sdf.solpos.tst).copy()
+        sza.index = sdf.index  # apply the same tst index to sza for easier masking later
+
+        # 3. Calendar dates for navigation — tz-independent via .date property
+        all_dates = np.unique(sdf.index.date)  # sorted array of datetime.date
+        n_total = len(all_dates)
+
+        # 4. Figure setup
+        if (ax := kwargs.pop("ax", None)) is None:
+            _, ax = plt.subplots(1, 1, figsize=(12, 5), layout="constrained")
+
+        per_col = plot_kwargs or {}
+
+        # Pre-compute global y-limits (physical daytime only)
+        global_ylim = None
+        if y_scale == "global":
+            all_day = sdf.where(sza < 93)
+            vmin_g, vmax_g = all_day.min().min(), all_day.max().max()
+            if pd.notna(vmin_g) and pd.notna(vmax_g) and vmin_g < vmax_g:
+                pad_g = (vmax_g - vmin_g) * 0.05
+                global_ylim = (vmin_g - pad_g, vmax_g + pad_g)
+
+        # 5. Navigation state and draw function
+        state = {"idx": 0}
+
+        def _update(i: int) -> None:
+            # define viewing window limits...
+            state["idx"] = max(0, min(i, n_total - window_size))
+            idx_start = state["idx"]
+            idx_end = min(idx_start + window_size - 1, n_total - 1)
+
+            # Select timestamps: within window dates AND below max_sza
+            window_dates = all_dates[idx_start : idx_end + 1]
+            date_mask = np.isin(sdf.index.date, window_dates)
+            sza_mask = (sza < max_sza).values
+            win_mask = date_mask & sza_mask
+
+            sdf_win = sdf.loc[win_mask]
+            sza_win = sza.loc[win_mask]
+            sdf_day = sdf_win.where(sza_win < 91)
+
+            ax.cla()
+
+            if len(sdf_win) > 0:
+                real_nums = mpl.dates.date2num(sdf_win.index.to_pydatetime())
+                mapper = _DiurnalMapper(real_nums, nominal_step_days=step_days)
+                ax.set_xscale("diurnal", mapper=mapper)
+                for col in columns:
+                    kw = {**kwargs, **per_col.get(col, {})}
+                    ax.plot(sdf_day.index, sdf_day[col], label=col, **kw)
+                if len(columns) > 1:
+                    ax.legend()
+                ax.autoscale_view()
+
+            if global_ylim is not None:
+                ax.set_ylim(*global_ylim)
+            elif y_scale == "per_day" and not sdf_day.empty:
+                vmin = sdf_day.min().min()
+                vmax = sdf_day.max().max()
+                if pd.notna(vmin) and pd.notna(vmax) and vmin < vmax:
+                    pad = (vmax - vmin) * 0.05
+                    ax.set_ylim(vmin - pad, vmax + pad)
+
+            date_start = all_dates[idx_start]
+            date_end = all_dates[idx_end]
+            date_str = (
+                str(date_start)
+                if window_size == 1
+                else f"{date_start} \u2013 {date_end}"
+            )
+            ax.set_title(
+                f"{date_str}  [{idx_start + 1}/{n_total}]"
+                "  \u2190\u2192 or scroll to navigate"
+            )
+            ax.get_figure().canvas.draw_idle()
+
+        def _on_key(event) -> None:
+            if step_ := step if event.key == "right" else -step if event.key == "left" else 0:
+                _update(state["idx"] + step_)
+
+        def _on_scroll(event) -> None:
+            _update(state["idx"] + (step if event.step < 0 else -step))
+
+        # 6. Connect events and show first window
+        fig = ax.get_figure()
+
+        _non_interactive = {"agg", "cairo", "pdf", "pgf", "ps", "svg", "template"}
+        if mpl.get_backend().lower() in _non_interactive:
+            logger.warning(
+                f"Backend '{mpl.get_backend()}' is non-interactive; "
+                "keyboard/scroll navigation will not work."
+            )
+
+        fig.canvas.mpl_connect("key_press_event", _on_key)
+        fig.canvas.mpl_connect("scroll_event", _on_scroll)
+
+        _update(0)
+
+        return fig
