@@ -8,43 +8,13 @@ nav = [
     {"Home" = "index.md"},
     {"Installation" = "installation.md"},
     {"User Guide" = "user-guide.md"},
-    {"Quick References" = "quick-references.md"},
+    {"Quick References" = "quick-reference.md"},
     {"API Reference" = "api.md"},
 ]
 extra_css = ["stylesheets/extra.css"]
 
-[project.plugins.mkdocstrings.handlers.python]
-paths = ["src"]
-inventories = [
-    "https://docs.python.org/3/objects.inv",
-    "http://pandas.pydata.org/pandas-docs/stable/objects.inv",
-    "https://docs.xarray.dev/en/stable/objects.inv",
-    "https://numpy.org/doc/stable/objects.inv"
-]
-
-[project.plugins.mkdocstrings.handlers.python.options]
-docstring_style = "numpy"
-backlinks = "tree"
-docstring_options = { "ignore_init_summary" = true }
-docstring_section_style = "list"
-filters = "public"
-heading_level = 3
-inherited_members = true
-merge_init_into_class = true
-parameter_headings = true
-separate_signature = true
-show_root_heading = true
-show_root_full_path = false
-show_signature_annotations = true
-show_source = true
-show_symbol_type_heading = true
-show_symbol_type_toc = true
-signature_crossrefs = true
-summary = true
-unwrap_annotated = true
-
 [project.theme]
-# custom_dir = "overrides"
+custom_dir = "overrides"
 logo = "images/logo_solarpandas_fondo_transparente.png"
 features = [
     "content.code.copy",      # Añade un botón flotante para copiar el código
@@ -82,6 +52,41 @@ icon = "fontawesome/solid/envelope"
 link = "mailto:jararias@uma.es"
 name = "Jose A Ruiz-Arias, Universidad de Málaga, Spain"
 
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+inventories = [
+    "https://docs.python.org/3/objects.inv",
+    "http://pandas.pydata.org/pandas-docs/stable/objects.inv",
+    "https://docs.xarray.dev/en/stable/objects.inv",
+    "https://numpy.org/doc/stable/objects.inv"
+]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "numpy"
+backlinks = "tree"
+docstring_options = { "ignore_init_summary" = true }
+docstring_section_style = "list"
+filters = "public"
+heading_level = 3
+inherited_members = true
+merge_init_into_class = true
+parameter_headings = true
+separate_signature = true
+show_root_heading = true
+show_root_full_path = false
+show_signature_annotations = true
+show_source = true
+show_symbol_type_heading = true
+show_symbol_type_toc = true
+signature_crossrefs = true
+summary = true
+unwrap_annotated = true
+
+[code]
+# Resaltado de sintaxis
+highlight_theme = "monokai"
+line_numbers = true
+
 [project.markdown_extensions.admonition]
 
 [project.markdown_extensions.footnotes]
@@ -104,8 +109,3 @@ pygments_lang_class = true
 
 [project.markdown_extensions.pymdownx.tabbed]
 alternate_style = true  # Hace que las pestañas se vean más modernas y limpias
-
-[code]
-# Resaltado de sintaxis
-highlight_theme = "monokai"
-line_numbers = true

@@ -1,7 +1,11 @@
 
-<!-- the caption element below is a workaround to center the image -->
-![image title](images/logo_solarpandas_fondo_blanco.png#only-light){ width="400" }
+<!-- the caption element below is a workaround to center the image
+![image title](images/logo_solarpandas_fondo_transparente.png#only-light){ width="400" }
 ![image title](images/logo_solarpandas_fondo_negro.png#only-dark){ width="400" }
+/// caption
+/// -->
+
+![image title](images/logo_solarpandas_fondo_transparente.png){ width="400" }
 /// caption
 ///
 
@@ -58,5 +62,5 @@ clean.to_parquet("clean_ghi.parquet")
 
 - [Installation](installation.md) — setup and environment requirements.
 - [User Guide](user-guide.md) — practical workflows and end-to-end examples.
-- [Quick References](quick-references.md) — short command-oriented cheatsheets.
+- [Quick References](quick-reference.md) — short command-oriented cheatsheets.
 - [API Reference](api.md) — complete API pages generated with mkdocstrings.
