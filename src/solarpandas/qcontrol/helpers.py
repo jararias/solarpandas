@@ -1,4 +1,3 @@
-
 """Shared helpers and data structures for quality-control modules."""
 
 import copy
@@ -6,8 +5,8 @@ from dataclasses import dataclass
 from typing import Callable
 
 import colorcet as cc
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from loguru import logger
 
@@ -28,6 +27,13 @@ DENSITY_CMAP = cc.cm.blues_r
 def construct_qcflag_array(failed: pd.Series, passed: pd.Series) -> np.ndarray[np.int8]:
     """Build QC flag values from boolean failed and passed masks.
 
+    Parameters
+    ----------
+    failed : pandas.Series
+        Boolean series; ``True`` where the test fails.
+    passed : pandas.Series
+        Boolean series; ``True`` where the test passes.
+
     Returns
     -------
     numpy.ndarray
@@ -42,9 +48,8 @@ def construct_qcflag_array(failed: pd.Series, passed: pd.Series) -> np.ndarray[n
 
 
 def construct_flag_series(
-    sdf: SolarDataFrame | SolarSeries,
-    name: str, test_result: np.ndarray
-) -> SolarSeries: 
+    sdf: SolarDataFrame | SolarSeries, name: str, test_result: np.ndarray
+) -> SolarSeries:
     """Wrap a QC result array as a ``SolarSeries`` with metadata preserved."""
     return SolarSeries(
         data=test_result,

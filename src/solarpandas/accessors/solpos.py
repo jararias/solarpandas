@@ -1,4 +1,3 @@
-
 """Pandas accessors and caching helpers for solar-position computations."""
 
 from functools import lru_cache
@@ -9,7 +8,7 @@ import pandas as pd
 import sunwhere
 from loguru import logger
 
-from ..base import SolarSeries, SolarDataFrame
+from ..base import SolarDataFrame, SolarSeries
 from ..config import get_option
 
 logger.disable(__name__)
@@ -23,15 +22,18 @@ def _compute_cached_solpos(
     longitude: float,
     algorithm: str,
     refraction: bool,
-    engine: str
+    engine: str,
 ) -> sunwhere._base.Sunpos:
     """Compute solar position and cache the result for repeated queries."""
-    logger.debug(f"evaluating solar position with `{algorithm}` algorithm, "
-                 f"refraction={refraction}, engine=`{engine}`...")
+    logger.debug(
+        f"evaluating solar position with `{algorithm}` algorithm, "
+        f"refraction={refraction}, engine=`{engine}`..."
+    )
     index = pd.to_datetime(np.frombuffer(times, dtype="datetime64[ns]"), utc=True)
     args = (pd.DatetimeIndex(index), latitude, longitude)
     kwargs = {"algorithm": algorithm, "refraction": refraction, "engine": engine}
     return sunwhere.sites(*args, **kwargs)
+
 
 def clear_solpos_cache() -> None:
     """Clear the in-memory solar-position cache.
@@ -47,6 +49,7 @@ def clear_solpos_cache() -> None:
     """
     _compute_cached_solpos.cache_clear()
     logger.debug("solpos cache cleared")
+
 
 def get_solpos_cache_info():
     """Return cache statistics for solar-position computations.
@@ -99,14 +102,13 @@ class SolarPositionAccessor:
     def _validate(obj):
         if not isinstance(obj, (SolarSeries, SolarDataFrame)):
             name = obj.__class__.__name__
-            raise AttributeError(f"required a SolarSeries or SolarDataFrame instance. Got {name}")
+            raise AttributeError(
+                f"required a SolarSeries or SolarDataFrame instance. Got {name}"
+            )
         return obj
 
     def compute(
-        self,
-        algorithm: str = "psa",
-        refraction: bool = True,
-        engine: str = "numexpr"
+        self, algorithm: str = "psa", refraction: bool = True, engine: str = "numexpr"
     ) -> sunwhere._base.Sunpos:
         """Compute solar position without using the accessor cache.
 
@@ -124,8 +126,10 @@ class SolarPositionAccessor:
         sunwhere._base.Sunpos
             ``sunwhere`` result object containing angular and temporal variables.
         """
-        logger.debug(f"evaluating solar position with `{algorithm}` algorithm, "
-                     f"refraction={refraction}, engine=`{engine}`...")
+        logger.debug(
+            f"evaluating solar position with `{algorithm}` algorithm, "
+            f"refraction={refraction}, engine=`{engine}`..."
+        )
         args = (self._sdf.index, self._sdf.latitude, self._sdf.longitude)
         kwargs = {"algorithm": algorithm, "refraction": refraction, "engine": engine}
         return sunwhere.sites(*args, **kwargs)
@@ -150,7 +154,9 @@ class SolarPositionAccessor:
 
         # the numpy datetime64[ns] type does not have timezone information, so we need to
         # convert the times to UTC before converting to bytes
-        time_ary_bytes = np.array(self._sdf.index.tz_convert("UTC"), dtype="datetime64[ns]").tobytes()
+        time_ary_bytes = np.array(
+            self._sdf.index.tz_convert("UTC"), dtype="datetime64[ns]"
+        ).tobytes()
 
         solpos = _compute_cached_solpos(
             time_ary_bytes,
@@ -158,7 +164,8 @@ class SolarPositionAccessor:
             self._sdf.longitude,
             algorithm=self._algorithm,
             refraction=self._refraction,
-            engine=self._engine)
+            engine=self._engine,
+        )
 
         logger.debug(f"retrieved cached solar position. Extracting `{attr_name}`...")
         if callable(data := getattr(solpos, attr_name)):
@@ -167,7 +174,7 @@ class SolarPositionAccessor:
         if "site" in data.dims:
             data = data.isel(site=0)
         data = data.to_pandas().values
-    
+
         if not as_solarseries:
             return data
 
@@ -178,58 +185,140 @@ class SolarPositionAccessor:
             latitude=self._sdf.latitude,
             longitude=self._sdf.longitude,
             elevation=self._sdf.elevation,
-            custom_metadata=self._sdf.custom_metadata)
+            custom_metadata=self._sdf.custom_metadata,
+        )
 
     @property
-    def sza(self):
+    def sza(self) -> SolarSeries:
+        """Solar zenith angle in degrees. Alias for :attr:`zenith`."""
         return self._get_cached_solpos("sza")
 
     @property
-    def zenith(self):
+    def zenith(self) -> SolarSeries:
+        """Solar zenith angle in degrees at each timestamp.
+
+        Returns
+        -------
+        SolarSeries
+            Values range from 0° (sun overhead) to 180° (sun below horizon).
+
+        Examples
+        --------
+        >>> sza = sdf.solpos.zenith
+        >>> daytime = sza < 90
+        """
         return self._get_cached_solpos("zenith")
 
     @property
-    def elevation(self):
-        return 90. - self.zenith
+    def elevation(self) -> SolarSeries:
+        """Solar elevation angle in degrees (complement of zenith: ``90 - zenith``).
+
+        Returns
+        -------
+        SolarSeries
+            Positive values indicate the sun is above the horizon.
+        """
+        return 90.0 - self.zenith
 
     @property
-    def azimuth(self):
+    def azimuth(self) -> SolarSeries:
+        """Solar azimuth angle in degrees measured clockwise from north.
+
+        Returns
+        -------
+        SolarSeries
+        """
         return self._get_cached_solpos("azimuth")
 
     @property
-    def cosz(self):
+    def cosz(self) -> SolarSeries:
+        """Cosine of the solar zenith angle.
+
+        Returns
+        -------
+        SolarSeries
+        """
         return self._get_cached_solpos("cosz")
 
     @property
-    def eth(self):
+    def eth(self) -> SolarSeries:
+        """Extraterrestrial horizontal irradiance in W m\u207b\u00b2.
+
+        Returns
+        -------
+        SolarSeries
+            Instantaneous irradiance on a horizontal plane at the top of atmosphere.
+        """
         return self._get_cached_solpos("eth")
 
     @property
-    def etn(self):
+    def etn(self) -> SolarSeries:
+        """Extraterrestrial normal irradiance in W m\u207b\u00b2.
+
+        Returns
+        -------
+        SolarSeries
+            Irradiance on a surface perpendicular to the solar beam (``ISC * ecf``).
+        """
         return self._ISC * self.ecf
 
     @property
-    def ecf(self):
+    def ecf(self) -> SolarSeries:
+        """Earth\u2013Sun distance correction factor (dimensionless).
+
+        Returns
+        -------
+        SolarSeries
+            Ratio of mean to actual Earth\u2013Sun distance squared.
+        """
         return self._get_cached_solpos("ecf")
 
     @property
-    def true_solar_time(self):
+    def true_solar_time(self) -> SolarSeries:
+        """True Solar Time as a tz-aware datetime series.
+
+        Returns
+        -------
+        SolarSeries
+            Timestamps re-expressed in True Solar Time (TST).
+
+        Examples
+        --------
+        >>> tst_hour = sdf.solpos.true_solar_time.dt.hour
+        """
         return self._get_cached_solpos("true_solar_time")
 
     @property
-    def tst(self):
+    def tst(self) -> SolarSeries:
+        """Alias for :attr:`true_solar_time`."""
         return self.true_solar_time
 
     @property
-    def true_solar_day(self):
+    def true_solar_day(self) -> SolarSeries:
+        """True Solar Time floored to the start of each solar day.
+
+        Returns
+        -------
+        SolarSeries
+        """
         return self.true_solar_time.dt.floor("D")
 
     @property
-    def tsd(self):
+    def tsd(self) -> SolarSeries:
+        """Alias for :attr:`true_solar_day`."""
         return self.true_solar_day
 
     @property
-    def local_solar_time(self):
+    def local_solar_time(self) -> SolarSeries:
+        """Local Solar Time as a tz-aware datetime series.
+
+        Computed by shifting the index by the longitude-based solar offset
+        (``longitude * 4`` minutes).
+
+        Returns
+        -------
+        SolarSeries
+        """
         deltat = pd.Timedelta(self._sdf.longitude * 4, "min")
         return SolarSeries(
             self._sdf.index + deltat,
@@ -237,10 +326,12 @@ class SolarPositionAccessor:
             latitude=self._sdf.latitude,
             longitude=self._sdf.longitude,
             elevation=self._sdf.elevation,
-            custom_metadata=self._sdf.custom_metadata)
+            custom_metadata=self._sdf.custom_metadata,
+        )
 
     @property
-    def lst(self):
+    def lst(self) -> SolarSeries:
+        """Alias for :attr:`local_solar_time`."""
         return self.local_solar_time
 
     def sunrise(self, units: Literal["rad", "deg", "tst", "lst", "utc"] = "utc"):

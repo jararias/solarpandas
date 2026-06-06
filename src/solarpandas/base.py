@@ -32,9 +32,11 @@ def _epilogue(obj):
     epilogue = f"\n[site={site}"
     if (network := obj.custom_metadata.get("network", None)) is not None:
         epilogue += f"/{network}"
-    epilogue += (f" latitude={obj.latitude:.4f}\u00b0"
-                 f" longitude={obj.longitude:.4f}\u00b0"
-                 f" elevation={obj.elevation:.1f} m]")
+    epilogue += (
+        f" latitude={obj.latitude:.4f}\u00b0"
+        f" longitude={obj.longitude:.4f}\u00b0"
+        f" elevation={obj.elevation:.1f} m]"
+    )
     return epilogue
 
 
@@ -58,6 +60,7 @@ class SolarSeries(pd.Series):
     ``latitude``, ``longitude`` and ``elevation`` are reserved metadata keys.
     They are managed internally and cannot be provided in ``custom_metadata``.
     """
+
     _metadata = ["_latitude", "_longitude", "_elevation", "_custom_metadata"]
 
     @property
@@ -104,19 +107,23 @@ class SolarSeries(pd.Series):
         super().__init__(*args, **kwargs)
 
     @property
-    def latitude(self):
+    def latitude(self) -> float:
+        """float : Site latitude in decimal degrees."""
         return self._latitude
 
     @property
-    def longitude(self):
+    def longitude(self) -> float:
+        """float : Site longitude in decimal degrees."""
         return self._longitude
 
     @property
-    def elevation(self):
+    def elevation(self) -> float:
+        """float : Site elevation in meters above sea level."""
         return self._elevation
 
     @property
-    def custom_metadata(self):
+    def custom_metadata(self) -> dict:
+        """dict : Additional user metadata attached to the object."""
         return self._custom_metadata
 
     def replace_data(
@@ -176,6 +183,7 @@ class SolarDataFrame(pd.DataFrame):
     ``latitude``, ``longitude`` and ``elevation`` are reserved metadata keys.
     They are managed internally and cannot be provided in ``custom_metadata``.
     """
+
     _metadata = ["_latitude", "_longitude", "_elevation", "_custom_metadata"]
 
     @property
@@ -222,19 +230,23 @@ class SolarDataFrame(pd.DataFrame):
         super().__init__(*args, **kwargs)
 
     @property
-    def latitude(self):
+    def latitude(self) -> float:
+        """float : Site latitude in decimal degrees."""
         return self._latitude
 
     @property
-    def longitude(self):
+    def longitude(self) -> float:
+        """float : Site longitude in decimal degrees."""
         return self._longitude
 
     @property
-    def elevation(self):
+    def elevation(self) -> float:
+        """float : Site elevation in meters above sea level."""
         return self._elevation
 
     @property
-    def custom_metadata(self):
+    def custom_metadata(self) -> dict:
+        """dict : Additional user metadata attached to the object."""
         return self._custom_metadata
 
     def as_pandas(self):

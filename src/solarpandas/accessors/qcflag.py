@@ -2,14 +2,14 @@
 
 import inspect
 
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from loguru import logger
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from ..base import SolarDataFrame, SolarSeries
-from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_PASSED, QC_COLOR_NOT_VERIFIABLE
+from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_NOT_VERIFIABLE, QC_COLOR_PASSED
 from ..qcontrol import helpers, qcrad
 from ..types import QCFlagDtype, QCFlagEnum
 
@@ -19,16 +19,13 @@ logger = logger.opt(colors=True)
 
 @pd.api.extensions.register_series_accessor("flag")
 class QCFlagAccessor:
-    """Accessor for Series with QCFlagDtype dtype.
-
-    Usage
-    -----
-    s.flag.fails           # boolean Series: True where value is -1
-    s.flag.passes          # boolean Series: True where value is 1
-    s.flag.not_verifiable  # boolean Series: True where value is 0
+    """Accessor for Series with ``QCFlagDtype`` dtype.
 
     Examples
     --------
+    >>> qc_series.flag.fails          # True where flag == -1
+    >>> qc_series.flag.passes         # True where flag == 1
+    >>> qc_series.flag.not_verifiable # True where flag == 0
     >>> counts = qc_series.flag.counts()
     >>> qc_series.flag.heatmap()
     """
@@ -93,13 +90,30 @@ class QCFlagAccessor:
         )
 
     def pieplot(self, skip_nighttime: bool = True, **kwargs) -> None:
-        """Plot a pie chart with the QC flag distribution."""
+        """Plot a pie chart of the QC flag distribution.
+
+        Parameters
+        ----------
+        skip_nighttime : bool, default True
+            If ``True`` and input is a ``SolarSeries``, restrict counts to
+            daytime points (solar zenith angle below 90°).
+        **kwargs : Any
+            Extra keyword arguments passed to ``Series.plot.pie``.
+        """
         counts = self.counts(skip_nighttime=skip_nighttime, normalize=True)
         defaults = {"labels": counts.index, "autopct": "%1.1f%%", "startangle": 90}
         counts.plot.pie(**(defaults | kwargs))
 
     def plot(self, sdf: SolarDataFrame, **kwargs) -> None:
-        """Plot QC results using the test-specific plotting function."""
+        """Plot QC results using the test-specific plotting function.
+
+        Parameters
+        ----------
+        sdf : SolarDataFrame
+            Original data used as context for the plot.
+        **kwargs : Any
+            Extra keyword arguments forwarded to the test-specific plotter.
+        """
         if not isinstance(self._series, SolarSeries):
             logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
             return
@@ -119,23 +133,38 @@ class QCFlagAccessor:
         return plot_func(sdf, self._series)
 
     def heatmap(self) -> None:
-        """Plot a date-time heatmap of QC flag values."""
+        """Plot a date-time heatmap of QC flag values.
+
+        Displays a colour-encoded calendar grid with failed (red),
+        not-verifiable (yellow) and passed (green) categories.
+
+        Examples
+        --------
+        >>> sdf.qc["ghi_ppl"].flag.heatmap()
+        """
         if not isinstance(self._series, SolarSeries):
             logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
             return
 
-        cmap = ListedColormap([QC_COLOR_FAILED, QC_COLOR_NOT_VERIFIABLE, QC_COLOR_PASSED])
+        cmap = ListedColormap(
+            [QC_COLOR_FAILED, QC_COLOR_NOT_VERIFIABLE, QC_COLOR_PASSED]
+        )
         norm = BoundaryNorm([-1.5, -0.5, 0.5, 1.5], cmap.N)
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 5), layout="constrained")
         ax.set_facecolor("white")
 
-        kwargs = {"twilight_line": True, "aggfunc": "median", "cmap": cmap, "norm": norm}
-        self._series.astype(np.int8).solarplot.heatmap(ax=ax,colorbar=False, **kwargs)
+        kwargs = {
+            "twilight_line": True,
+            "aggfunc": "median",
+            "cmap": cmap,
+            "norm": norm,
+        }
+        self._series.astype(np.int8).solarplot.heatmap(ax=ax, colorbar=False, **kwargs)
         ax.set_title(f"QC Flag for -- {self._series.name} --")
 
         mesh = ax.collections[0]
-        cax = ax.inset_axes([0., -0.15, 0.4, 0.03], transform=ax.transAxes)
+        cax = ax.inset_axes([0.0, -0.15, 0.4, 0.03], transform=ax.transAxes)
         cbar = fig.colorbar(mesh, cax=cax, orientation="horizontal")
         cbar.set_ticks([-1, 0, 1])
         cbar.ax.set_xticklabels(["FAILED", "NOT VERIFIABLE", "PASSED"])

@@ -158,10 +158,20 @@ if "diurnal" not in mpl.scale.get_scale_names():
 class SolarPlotAccessor:
     """Accessor with high-level plotting methods for solar time series.
 
+    Methods
+    -------
+    diurnal
+        All-data compressed timeline removing nighttime gaps.
+    heatmap
+        Date-time heatmap of a single variable.
+    rollingday
+        Interactive day-by-day time series with keyboard/scroll navigation.
+
     Examples
     --------
     >>> sdf.solarplot.diurnal(column="ghi")
     >>> sdf.solarplot.heatmap(column="ghi", time_ref="tst")
+    >>> sdf.solarplot.rollingday("ghi", window_size=3)
     """
 
     def __init__(self, sdf_obj):
@@ -201,6 +211,11 @@ class SolarPlotAccessor:
         -------
         matplotlib.figure.Figure
             Figure containing the diurnal plot.
+
+        Examples
+        --------
+        >>> fig = sdf.solarplot.diurnal(column="ghi", color="gold", lw=1.5)
+        >>> fig = sdf.solarplot.diurnal(column=["ghi", "dni"], max_sza=90)
         """
 
         if isinstance(self._sdf, SolarSeries):
@@ -284,6 +299,11 @@ class SolarPlotAccessor:
         -------
         matplotlib.figure.Figure
             Figure containing the heatmap.
+
+        Examples
+        --------
+        >>> fig = sdf.solarplot.heatmap(column="ghi")
+        >>> fig = sdf.solarplot.heatmap(column="dni", time_ref="utc", cmap="plasma")
         """
 
         MAP_OF_YLABELS = {
@@ -496,7 +516,9 @@ class SolarPlotAccessor:
         # solar time coordinates. Otherwise, data from sites far from the prime meridian
         # would have their solar days split across two calendar days
         sdf = sdf.set_index(sdf.solpos.tst).copy()
-        sza.index = sdf.index  # apply the same tst index to sza for easier masking later
+        sza.index = (
+            sdf.index
+        )  # apply the same tst index to sza for easier masking later
 
         # 3. Calendar dates for navigation — tz-independent via .date property
         all_dates = np.unique(sdf.index.date)  # sorted array of datetime.date
@@ -572,7 +594,13 @@ class SolarPlotAccessor:
             ax.get_figure().canvas.draw_idle()
 
         def _on_key(event) -> None:
-            if step_ := step if event.key == "right" else -step if event.key == "left" else 0:
+            if (
+                step_ := step
+                if event.key == "right"
+                else -step
+                if event.key == "left"
+                else 0
+            ):
                 _update(state["idx"] + step_)
 
         def _on_scroll(event) -> None:

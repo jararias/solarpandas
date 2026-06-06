@@ -1,4 +1,3 @@
-
 """Accessor API to run qcrad quality-control checks on solar data."""
 
 from functools import lru_cache, reduce
@@ -107,18 +106,18 @@ _COMPONENT_TO_TEST_MAP = {
     "ghi": {
         "1-component": ["ghi_ppl", "ghi_erl"],
         "2-component": ["Kn_ppl", "KT_erl", "K_erl", "K_erl_clear", "trackeroff"],
-        "3-component": ["closure"]
+        "3-component": ["closure"],
     },
     "dni": {
         "1-component": ["dni_ppl", "dni_erl"],
         "2-component": ["Kn_ppl", "Kn_erl", "K_erl", "K_erl_clear", "trackeroff"],
-        "3-component": ["closure"]
+        "3-component": ["closure"],
     },
     "dif": {
         "1-component": ["dif_ppl", "dif_erl"],
         "2-component": [],
-        "3-component": ["closure"]
-    }
+        "3-component": ["closure"],
+    },
 }
 
 
@@ -147,11 +146,13 @@ class QualityControlAccessor:
             logger.warning(
                 "Could not infer the time step of the data. QC tests may be inaccurate or fail "
                 "if it is other than one minute. Please, make sure the index is a DateTimeIndex "
-                "with a regular 1-minute frequency.")
+                "with a regular 1-minute frequency."
+            )
         elif time_step != pd.Timedelta("1min"):
             logger.warning(
                 f"the inferred time step is {time_step}. Please, be aware that QC tests are "
-                "designed for 1-minute data and may not be accurate or fail.")
+                "designed for 1-minute data and may not be accurate or fail."
+            )
         return obj
 
     def __getitem__(self, key: str) -> SolarSeries:
@@ -203,11 +204,15 @@ class QualityControlAccessor:
                 raise ValueError("component must be one of 'ghi', 'dni', 'dif' or None")
 
             if any([tests, like, regex]):
-                logger.warning("Cannot specify `component` together with `tests`, `like` or `regex` "
-                               "filters. Ignoring filters and using component only.")
+                logger.warning(
+                    "Cannot specify `component` together with `tests`, `like` or `regex` "
+                    "filters. Ignoring filters and using component only."
+                )
 
             logger.debug(f"Filtering QC tests for component '{component}'")
-            tests = reduce(lambda x, y: x + y, _COMPONENT_TO_TEST_MAP.get(component).values())
+            tests = reduce(
+                lambda x, y: x + y, _COMPONENT_TO_TEST_MAP.get(component).values()
+            )
             logger.debug(f"Tests for component '{component}': {tests}")
 
         if tests is None and like is None and regex is None:
@@ -224,7 +229,30 @@ class QualityControlAccessor:
         like: str | None = None,
         regex: str | None = None,
     ) -> pd.Series:
-        """Return a boolean mask where at least one selected test fails."""
+        """Return a boolean mask where at least one selected test fails.
+
+        Parameters
+        ----------
+        component : {"ghi", "dni", "dif"} or None, default None
+            Convenience selector for pre-defined test groups.
+        tests : list[str] or None, default None
+            Explicit test names.
+        like : str or None, default None
+            Substring pattern forwarded to ``DataFrame.filter``.
+        regex : str or None, default None
+            Regex pattern forwarded to ``DataFrame.filter``.
+
+        Returns
+        -------
+        pandas.Series
+            Boolean series; ``True`` where at least one selected test flags a
+            sample as failed.
+
+        Examples
+        --------
+        >>> mask = sdf.qc.failed(component="ghi")
+        >>> clean_ghi = sdf["ghi"].where(~mask)
+        """
 
         return (
             self.filter(component, tests=tests, like=like, regex=regex)
@@ -240,7 +268,30 @@ class QualityControlAccessor:
         like: str | None = None,
         regex: str | None = None,
     ) -> pd.Series:
-        """Return a boolean mask where all selected tests pass or are neutral."""
+        """Return a boolean mask where all selected tests pass or are neutral.
+
+        Parameters
+        ----------
+        component : {"ghi", "dni", "dif"} or None, default None
+            Convenience selector for pre-defined test groups.
+        tests : list[str] or None, default None
+            Explicit test names.
+        like : str or None, default None
+            Substring pattern forwarded to ``DataFrame.filter``.
+        regex : str or None, default None
+            Regex pattern forwarded to ``DataFrame.filter``.
+
+        Returns
+        -------
+        pandas.Series
+            Boolean series; ``True`` where all selected tests pass or are
+            not verifiable (neutral) for a given sample.
+
+        Examples
+        --------
+        >>> mask = sdf.qc.passed(component="dni")
+        >>> good_dni = sdf["dni"].loc[mask]
+        """
 
         return (
             self.filter(component, tests=tests, like=like, regex=regex)
@@ -255,14 +306,32 @@ class QualityControlAccessor:
         tests: list[str] | None = None,
         like: str | None = None,
         regex: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> pd.DataFrame:
         """Mask original values where selected QC tests fail.
+
+        Parameters
+        ----------
+        component : {"ghi", "dni", "dif"} or None, default None
+            Convenience selector for pre-defined test groups.
+        tests : list[str] or None, default None
+            Explicit test names.
+        like : str or None, default None
+            Substring pattern forwarded to ``DataFrame.filter``.
+        regex : str or None, default None
+            Regex pattern forwarded to ``DataFrame.filter``.
+        **kwargs : Any
+            Extra keyword arguments forwarded to ``DataFrame.mask``.
 
         Returns
         -------
         pandas.DataFrame
-            Copy of the original data with failed timestamps masked.
+            Copy of the original data with failed timestamps set to ``NaN``
+            (or to the value specified via ``other`` in ``**kwargs``).
+
+        Examples
+        --------
+        >>> masked = sdf.qc.mask_failed(component="ghi")
         """
 
         failed = self.failed(component, tests=tests, like=like, regex=regex)
@@ -270,7 +339,7 @@ class QualityControlAccessor:
         if component is None:
             return self._sdf.mask(failed, **kwargs)
 
-        masked_sdf =self._sdf.copy()
+        masked_sdf = self._sdf.copy()
         masked_sdf[component] = masked_sdf[component].mask(failed, **kwargs)
         return masked_sdf
 
@@ -282,23 +351,41 @@ class QualityControlAccessor:
         like: str | None = None,
         regex: str | None = None,
         combined: bool = False,
-        **kwargs
+        **kwargs,
     ) -> plt.Figure:
         """Render a QC pass/fail heatmap over time.
 
         Parameters
         ----------
+        component : {"ghi", "dni", "dif"} or None, default None
+            Convenience selector for pre-defined test groups.
+        tests : list[str] or None, default None
+            Explicit test names.
+        like : str or None, default None
+            Substring pattern forwarded to ``DataFrame.filter``.
+        regex : str or None, default None
+            Regex pattern forwarded to ``DataFrame.filter``.
         combined : bool, default False
-            If ``True``, encodes failure severity by component groups.
+            If ``True``, encodes failure severity by component groups
+            (1-component, 2-component, 3-component).
+        **kwargs : Any
+            Extra keyword arguments forwarded to the underlying heatmap plotter.
 
         Returns
         -------
         matplotlib.figure.Figure
             Figure containing the heatmap.
+
+        Examples
+        --------
+        >>> fig = sdf.qc.heatmap(component="ghi")
+        >>> fig = sdf.qc.heatmap(component="ghi", combined=True)
         """
 
         if not combined:
-            series = self.passed(component, tests=tests, like=like, regex=regex).astype(np.int8)
+            series = self.passed(component, tests=tests, like=like, regex=regex).astype(
+                np.int8
+            )
             cmap = ListedColormap([QC_COLOR_FAILED, QC_COLOR_PASSED])
             norm = BoundaryNorm([-0.5, 0.5, 1.5], cmap.N)
             ticks = {0: "FAILED", 1: "PASSED"}
@@ -306,9 +393,11 @@ class QualityControlAccessor:
         else:
 
             def get_failed(components):
-                return self.failed(tests=_COMPONENT_TO_TEST_MAP.get(component).get(components))
+                return self.failed(
+                    tests=_COMPONENT_TO_TEST_MAP.get(component).get(components)
+                )
 
-            series = self._sdf.replace_data(other=0.).iloc[:, 0].astype(np.int8)
+            series = self._sdf.replace_data(other=0.0).iloc[:, 0].astype(np.int8)
             series.loc[get_failed("1-component")] = np.int8(1)
             series.loc[get_failed("2-component")] = np.int8(2)
             series.loc[get_failed("3-component")] = np.int8(3)
@@ -332,7 +421,12 @@ class QualityControlAccessor:
         fig, ax = plt.subplots(1, 1, figsize=(14, 5), layout="constrained")
         ax.set_facecolor("white")
 
-        kwargs = {"twilight_line": True, "aggfunc": "median", "cmap": cmap, "norm": norm}
+        kwargs = {
+            "twilight_line": True,
+            "aggfunc": "median",
+            "cmap": cmap,
+            "norm": norm,
+        }
         series.solarplot.heatmap(ax=ax, colorbar=False, **kwargs)
         ax.set_title(title)
 

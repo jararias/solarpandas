@@ -35,7 +35,7 @@ from loguru import logger
 logger.disable(__name__)
 logger = logger.opt(colors=True)
 
-_DEFAULT_CONFIG_TOML_="""
+_DEFAULT_CONFIG_TOML_ = """
 [solar-position]  # table to set the sunwhere's options
 algorithm = "psa"  # solar position algorithm
 refraction = true
@@ -52,6 +52,7 @@ cda_atmosphere = "merra2_cda"  # atmosphere dataset for clear-day analysis
 server = "ftp.bsrn.awi.de"
 """
 
+
 def get_config_path() -> Path:
     """Return the path of the user configuration file.
 
@@ -64,16 +65,20 @@ def get_config_path() -> Path:
     path = platformdirs.user_config_path(appname="solarpandas", ensure_exists=True)
     return path / "config.toml"
 
+
 def _init_config_file():
     """Create the default config file from the built-in TOML template."""
     with get_config_path().open(mode="w") as f:
         f.write(_DEFAULT_CONFIG_TOML_)
-    logger.success(f"user's config file initialized at <blue>{get_config_path()}</blue>")
+    logger.success(
+        f"user's config file initialized at <blue>{get_config_path()}</blue>"
+    )
+
 
 def _read_config_options() -> dict[str, Any]:
     """Read all options from the configuration file.
 
-    If the configuration file does not exist, it initializes it with 
+    If the configuration file does not exist, it initializes it with
     default placeholder values.
 
     Returns
@@ -88,6 +93,7 @@ def _read_config_options() -> dict[str, Any]:
     with config_path.open(mode="rb") as f:
         return tomlkit.load(f)
 
+
 def reset_config_file():
     """Reset configuration to defaults by deleting and recreating the file.
 
@@ -101,7 +107,9 @@ def reset_config_file():
         logger.success(f"config file {get_config_path()} deleted")
     _GLOBAL_CONFIG = _read_config_options()
 
+
 _GLOBAL_CONFIG = _read_config_options()
+
 
 def save_config(path: Path | None = None) -> None:
     """Persist the in-memory configuration to a TOML file.
@@ -132,6 +140,7 @@ def save_config(path: Path | None = None) -> None:
     with target.open(mode="w", encoding="utf-8") as f:
         f.write(tomlkit.dumps(serializable))
     logger.success(f"config saved at <blue>{target}</blue>")
+
 
 def load_config(path: Path | None = None, overwrite: bool = True) -> dict[str, Any]:
     """Load configuration from a TOML file and optionally overwrite global state.
@@ -166,6 +175,7 @@ def load_config(path: Path | None = None, overwrite: bool = True) -> dict[str, A
     logger.success(f"config loaded from <blue>{cfg_path}</blue>")
     return _GLOBAL_CONFIG
 
+
 def show_config() -> None:
     """Print all current global options to the console.
 
@@ -174,11 +184,13 @@ def show_config() -> None:
     Uses :func:`pprint.pprint` for a compact formatted output.
     """
     from pprint import pprint
+
     return pprint(_GLOBAL_CONFIG, indent=2, width=20)
+
 
 def get_option(name: str, default: Any = None) -> Any:
     """Retrieve the value of a specific configuration option.
-    
+
     Options are organized in tables (sections) within the TOML file.
     This function uses dot notation to access nested values.
 
@@ -198,21 +210,10 @@ def get_option(name: str, default: Any = None) -> Any:
 
     Examples
     --------
-        >>> from solarpandas.config import get_option
-        
-        >>> # Get solar position algorithm
-        >>> algorithm = get_option('solar-position.algorithm')
-        >>> print(algorithm)
-        'psa'
-        
-        >>> # Get with default value
-        >>> server = get_option('bsrn.server', default='ftp.bsrn.awi.de')
-        
-        >>> # Data directories return Path objects
-        >>> from pathlib import Path
-        >>> data_dir = get_option('bsrn.data_dir')
-        >>> isinstance(data_dir, (Path, type(None)))
-        True
+    >>> from solarpandas.config import get_option
+    >>> algorithm = get_option("solar-position.algorithm")
+    >>> server = get_option("bsrn.server", default="ftp.bsrn.awi.de")
+    >>> data_dir = get_option("bsrn.data_dir")  # returns a Path or None
     """
     table_name, option_name = name.split(".")
     if (table := _GLOBAL_CONFIG.get(table_name, None)) is None:
@@ -224,9 +225,10 @@ def get_option(name: str, default: Any = None) -> Any:
         return Path(value)
     return value
 
+
 def set_option(name: str, value: Any) -> None:
     """Temporarily update a global option for the current session.
-    
+
     Modifies configuration values in memory only. Changes are lost when
     the Python session ends. To make persistent changes, edit the
     config.toml file directly.
@@ -240,20 +242,16 @@ def set_option(name: str, value: Any) -> None:
 
     Examples
     --------
-        >>> from solarpandas.config import set_option, get_option
-        
-        >>> # Change solar position algorithm
-        >>> set_option('solar-position.algorithm', 'nrel')
-        >>> get_option('solar-position.algorithm')
-        'nrel'
-        
-        >>> # Set data directory with Path object
-        >>> from pathlib import Path
-        >>> set_option('bsrn.data_dir', Path('/tmp/bsrn-cache'))
+    >>> from solarpandas.config import set_option, get_option
+    >>> set_option("solar-position.algorithm", "nrel")
+    >>> get_option("solar-position.algorithm")
+    'nrel'
+    >>> from pathlib import Path
+    >>> set_option("bsrn.data_dir", Path("/tmp/bsrn-cache"))
 
     Notes
     -----
-    Changes are session-local until :func:`save_config` is called.
+    Changes are session-local. Call :func:`save_config` to persist them.
     """
 
     table_name, option_name = name.split(".")
