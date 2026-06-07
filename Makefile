@@ -41,9 +41,11 @@ coverage:
 		--cov-report=xml:reports/coverage.xml \
 		--junitxml=reports/junit.xml \
 		-q
+	@echo "✅ Tests done"
+	@echo "🚀 Generating badges"
 	@uv run genbadge coverage -i reports/coverage.xml -o docs/images/badges/coverage-badge.svg
 	@uv run genbadge tests -i reports/junit.xml -o docs/images/badges/tests-badge.svg
-	@echo "Badges generated in docs/images/badges/*-badge.svg"
+	@echo "✅ Badges generated in docs/images/badges/*-badge.svg"
 	@rm -rf reports .coverage
 
 .PHONY: docs

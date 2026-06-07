@@ -152,7 +152,7 @@ def fetch_allsite_metadata_from_pangaea():
     table["start"] = pd.to_datetime(table["start"], errors="coerce")
     table["end"] = pd.to_datetime(table["end"], errors="coerce")
 
-    records = json.loads(table.to_json(orient="records"))
+    records = json.loads(table.to_json(orient="records", date_format="iso"))
     return {record["acronym"]: {key: value for key, value in record.items() if key != "acronym"}
             for record in records}
 
