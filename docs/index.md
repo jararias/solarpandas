@@ -1,13 +1,10 @@
 
-<!-- the caption element below is a workaround to center the image
-![image title](images/logo_solarpandas_fondo_transparente.png#only-light){ width="400" }
-![image title](images/logo_solarpandas_fondo_negro.png#only-dark){ width="400" }
-/// caption
-/// -->
-
-![image title](images/logo_solarpandas_fondo_transparente.png){ width="400" }
+<!-- the caption element below is a workaround to center the image -->
+![image title](images/logo_solarpandas_azul_fondo_transparente.png#only-light){ width="400" }
+![image title](images/logo_solarpandas_blanco_fondo_transparente.png#only-dark){ width="400" }
 /// caption
 ///
+
 
 # solarpandas: pandas for solar resource assessment
 
