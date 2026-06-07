@@ -32,8 +32,8 @@ sdf = sp.SolarDataFrame(
 )
 ```
 
-The three metadata fields are always required. Failing to provide them
-raises a `TypeError`.
+`latitude` and `longitude` are required and must be provided. `elevation`
+is optional and defaults to `0.0` (metres above mean sea level) if omitted.
 
 ### Custom metadata
 
@@ -79,7 +79,7 @@ suitable for offline exploration:
 import solarpandas as sp
 
 sdf = sp.sample_data.load_carpentras_data()
-print(sdf.shape)         # (525600, 3) — one year at 1-minute resolution
+print(sdf.shape)         # (527040, 3) — one year at 1-minute resolution (2016 is a leap year)
 print(sdf.columns)       # Index(['ghi', 'dni', 'dif'], ...)
 print(sdf.latitude)      # 44.083
 ```
@@ -314,6 +314,7 @@ Like solar position, results are cached automatically.
 ghi_cs = sdf.clearsky.ghi   # clear-sky global horizontal [W m⁻²]
 dni_cs = sdf.clearsky.dni   # clear-sky direct normal [W m⁻²]
 dif_cs = sdf.clearsky.dif   # clear-sky diffuse horizontal [W m⁻²]
+csi    = sdf.clearsky.csi   # clear-sky circumsolar irradiance [W m⁻²]
 ```
 
 Clear-sky estimates are used internally by several quality-control tests
@@ -546,7 +547,7 @@ The `.solarplot` accessor provides solar-specific plot types. All functions
 return a `matplotlib.figure.Figure` that can be customised or saved normally.
 
 ```python
-# Diurnal composite (mean and percentile envelope over the period)
+# Diurnal profile on a compressed daytime-only timeline
 fig = sdf.solarplot.diurnal(column="ghi")
 
 # Julian-day × time-of-day heatmap
@@ -554,6 +555,10 @@ fig = sdf.solarplot.heatmap(column="ghi", time_ref="tst", twilight_line=True)
 
 # Heatmap in UTC (useful to spot clock offsets)
 fig = sdf.solarplot.heatmap(column="ghi", time_ref="utc")
+
+# Interactive day-by-day rolling plot (scroll or arrow keys to navigate)
+fig = sdf.solarplot.rolling(column="ghi", window_size=3, max_sza=95.0)
+fig = sdf.solarplot.rolling(column=["ghi", "dni"], y_scale="global")
 
 # QC heatmap (test flags over time, see Section 6.6)
 fig = sdf.qc.heatmap(component="ghi")

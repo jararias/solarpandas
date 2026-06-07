@@ -1,13 +1,13 @@
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/jararias/solarpandas/main/docs/images/logo_solarpandas_azul_fondo_transparente.png" alt="logo" width="50%">
+<img src="https://raw.githubusercontent.com/jararias/solarpandas/main/docs/images/logo_solarpandas_azul_fondo_transparente.png" alt="logo" width="25%">
 </p>
 
 # solarpandas: pandas for solar resource assessment
 
 ![python versions](https://img.shields.io/badge/python-3.13-blue.svg)
-![tests-badge](https://raw.githubusercontent.com/jararias/solarpandas/main/docs/images/tests-badge.svg)
-![coverage-badge](https://raw.githubusercontent.com/solarpandas/sunwhere/main/docs/images/coverage-badge.svg)
+![tests-badge](https://raw.githubusercontent.com/jararias/solarpandas/main/docs/images/badges/tests-badge.svg)
+![coverage-badge](https://raw.githubusercontent.com/jararias/solarpandas/main/docs/images/badges/coverage-badge.svg)
 [![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-green.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 𝘴𝘰𝘭𝘢𝘳𝘱𝘢𝘯𝘥𝘢𝘴 is a personal project that I have been developing and using for my own research for years. It integrates under a common framework both standard methods in solar resource modeling and libraries and models I have developed myself. The incomparable extensibility of pandas makes it the perfect framework for this. The result is an advanced, modern, and sophisticated library that combines the unique power and versatility of pandas with the most widely used methods in solar resource modeling.

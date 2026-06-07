@@ -95,9 +95,10 @@ sdf.solpos.sunset(units="utc")
 ## Clear-Sky
 
 ```python
-sdf.clearsky.ghi
-sdf.clearsky.dni
-sdf.clearsky.dif
+sdf.clearsky.ghi   # clear-sky GHI [W m⁻²]
+sdf.clearsky.dni   # clear-sky DNI [W m⁻²]
+sdf.clearsky.dif   # clear-sky DIF [W m⁻²]
+sdf.clearsky.csi   # clear-sky circumsolar irradiance [W m⁻²]
 ```
 
 ## Quality Control
@@ -152,6 +153,7 @@ sdf.qc.heatmap(tests=["ghi_ppl", "ghi_erl"])
 ```python
 sdf.solarplot.diurnal(column="ghi")
 sdf.solarplot.heatmap(column="ghi", time_ref="tst", twilight_line=True)
+sdf.solarplot.rolling(column="ghi", window_size=3, max_sza=95.0)
 sdf.qc.heatmap(component="ghi")
 ```
 

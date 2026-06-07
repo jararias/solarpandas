@@ -1,6 +1,6 @@
 [project]
 site_name = "solarpandas"
-site_description = "pandas for solar resource"
+site_description = "Solar irradiance time-series analysis with pandas"
 site_url = "https://jararias.github.io/solarpandas"
 repo_url = "https://github.com/jararias/solarpandas"
 site_author = "Jose A Ruiz-Arias"
