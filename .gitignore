@@ -37,6 +37,9 @@ htmlcov/
 # Pyright / mypy
 .mypy_cache/
 
+# Documentation
+site/
+
 # IDEs and editors
 .idea/
 .vscode/
