@@ -25,6 +25,10 @@ from .qcontrol import (
     get_qc_cache_info,
 )
 
+from .skyclass import (
+    SkyClassAccessor,
+)
+
 from .solarplot import (
     SolarPlotAccessor,
 )

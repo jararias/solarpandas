@@ -25,6 +25,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "caelus-solar>=0.3.0",
     "colorcet>=3.2.1",
     "datashader>=0.19.1",
     "loguru>=0.7.3",
