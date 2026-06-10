@@ -2,14 +2,11 @@
 
 import inspect
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from loguru import logger
-from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from ..base import SolarDataFrame, SolarSeries
-from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_NOT_VERIFIABLE, QC_COLOR_PASSED
 from ..qcontrol import helpers, qcrad
 from ..types import QCFlagDtype, QCFlagEnum
 
@@ -17,7 +14,6 @@ logger.disable(__name__)
 logger = logger.opt(colors=True)
 
 
-@pd.api.extensions.register_series_accessor("flag")
 class QCFlagAccessor:
     """Accessor for Series with ``QCFlagDtype`` dtype.
 
@@ -142,6 +138,10 @@ class QCFlagAccessor:
         --------
         >>> sdf.qc["ghi_ppl"].flag.heatmap()
         """
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import BoundaryNorm, ListedColormap
+        from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_NOT_VERIFIABLE, QC_COLOR_PASSED
+
         if not isinstance(self._series, SolarSeries):
             logger.warning("testplot is only valid for SolarSeries. Cannot plot.")
             return

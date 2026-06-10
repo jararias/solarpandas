@@ -2,19 +2,15 @@
 import warnings
 
 import numpy as np
-import pandas as pd
 from loguru import logger
 
 from ..base import SolarSeries, SolarDataFrame
 from ..helpers import normalize
 
-
 logger.disable(__name__)
 logger = logger.opt(colors=True)
 
 
-@pd.api.extensions.register_series_accessor("skyclass")
-@pd.api.extensions.register_dataframe_accessor("skyclass")
 class SkyClassAccessor:
     """Accessor for derived irradiance parameters used in sky classification workflows.
 

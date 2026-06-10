@@ -7,11 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from loguru import logger
-from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from ..base import SolarDataFrame, SolarSeries
 from ..helpers import infer_time_step
-from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_PASSED
 from ..qcontrol import qcrad
 
 logger.disable(__name__)
@@ -66,42 +64,6 @@ def _run_cached_qc(hashdf: HashableDF) -> SolarDataFrame:
     return pd.concat(tests, axis=1)
 
 
-def clear_qc_cache() -> None:
-    """Clear the in-memory quality-control cache.
-
-    Examples
-    --------
-    >>> import solarpandas as sp
-    >>> sp.clear_qc_cache()
-    """
-    _run_cached_qc.cache_clear()
-    logger.debug("qc cache cleared")
-
-
-def get_qc_cache_info():
-    """Return cache statistics for quality-control computations.
-
-    Returns
-    -------
-    dict[str, int | None]
-        Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
-
-    Examples
-    --------
-    >>> import solarpandas as sp
-    >>> info = sp.get_qc_cache_info()
-    >>> "misses" in info
-    True
-    """
-    info = _run_cached_qc.cache_info()
-    return {
-        "hits": info.hits,
-        "misses": info.misses,
-        "current_size": info.currsize,
-        "max_size": info.maxsize,
-    }
-
-
 _COMPONENT_TO_TEST_MAP = {
     "ghi": {
         "1-component": ["ghi_ppl", "ghi_erl"],
@@ -121,9 +83,8 @@ _COMPONENT_TO_TEST_MAP = {
 }
 
 
-@pd.api.extensions.register_dataframe_accessor("qc")
 class QualityControlAccessor:
-    """Accessor to run and query qcrad quality-control flags.
+    """Accessor to run and query quality-control flags.
 
     Examples
     --------
@@ -166,6 +127,43 @@ class QualityControlAccessor:
         if name not in self._tests.columns:
             raise AttributeError(f"QC test '{name}' not found in results.")
         return self._tests[name]
+
+    @staticmethod
+    def clear_cache() -> None:
+        """Clear the in-memory quality-control cache.
+
+        Examples
+        --------
+        >>> import solarpandas as sp
+        >>> sp.clear_qc_cache()
+        """
+        _run_cached_qc.cache_clear()
+        logger.debug("qc cache cleared")
+
+    @staticmethod
+    def get_cache_info():
+        """Return cache statistics for quality-control computations.
+
+        Returns
+        -------
+        dict[str, int | None]
+            Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
+
+        Examples
+        --------
+        >>> import solarpandas as sp
+        >>> info = sp.get_qc_cache_info()
+        >>> "misses" in info
+        True
+        """
+        from .qcontrol import _run_cached_qc
+        info = _run_cached_qc.cache_info()
+        return {
+            "hits": info.hits,
+            "misses": info.misses,
+            "current_size": info.currsize,
+            "max_size": info.maxsize,
+        }
 
     @property
     def tests(self) -> SolarDataFrame:
@@ -381,6 +379,8 @@ class QualityControlAccessor:
         >>> fig = sdf.qc.heatmap(component="ghi")
         >>> fig = sdf.qc.heatmap(component="ghi", combined=True)
         """
+        from matplotlib.colors import BoundaryNorm, ListedColormap
+        from ..mplstyles import QC_COLOR_FAILED, QC_COLOR_PASSED
 
         if not combined:
             series = self.passed(component, tests=tests, like=like, regex=regex).astype(

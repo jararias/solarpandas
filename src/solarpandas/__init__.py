@@ -6,23 +6,22 @@
 import importlib.metadata
 
 from . import config, sample_data
+
 from .accessors import (
-    SolarPositionAccessor,
-    get_solpos_cache_info,
-    clear_solpos_cache,
     ClearskyIrradianceAccessor,
-    LTAIrradianceAccessor,
     CDAIrradianceAccessor,
-    clear_clearsky_cache,
-    get_clearsky_cache_info,
+    LTAIrradianceAccessor,
+    ParameterAccessor,
     QualityControlAccessor,
-    clear_qc_cache,
-    get_qc_cache_info,
+    SkyClassAccessor,
+    SolarPlotAccessor,
+    SolarPositionAccessor,
 )
+
 from .base import SolarSeries, SolarDataFrame
 from .iohelpers import read_csv, read_parquet
 from .logtools import enable_logger
-from .mplstyles import register as _register_mplstyles
+from .mplstyles import register_mplstyles as _register_mplstyles  # OPTIMIZE: this line adds a latency of about 0.7 seconds at import time
 
 try:
     __version__ = importlib.metadata.version("solarpandas")

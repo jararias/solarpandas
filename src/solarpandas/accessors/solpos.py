@@ -35,48 +35,6 @@ def _compute_cached_solpos(
     return sunwhere.sites(*args, **kwargs)
 
 
-def clear_solpos_cache() -> None:
-    """Clear the in-memory solar-position cache.
-
-    Notes
-    -----
-    Use this when changing model options and forcing a full recomputation.
-
-    Examples
-    --------
-    >>> import solarpandas as sp
-    >>> sp.clear_solpos_cache()
-    """
-    _compute_cached_solpos.cache_clear()
-    logger.debug("solpos cache cleared")
-
-
-def get_solpos_cache_info():
-    """Return cache statistics for solar-position computations.
-
-    Returns
-    -------
-    dict[str, int | None]
-        Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
-
-    Examples
-    --------
-    >>> import solarpandas as sp
-    >>> info = sp.get_solpos_cache_info()
-    >>> "hits" in info
-    True
-    """
-    info = _compute_cached_solpos.cache_info()
-    return {
-        "hits": info.hits,
-        "misses": info.misses,
-        "current_size": info.currsize,
-        "max_size": info.maxsize,
-    }
-
-
-@pd.api.extensions.register_series_accessor("solpos")
-@pd.api.extensions.register_dataframe_accessor("solpos")
 class SolarPositionAccessor:
     """Accessor to compute and expose solar-position variables.
 
@@ -106,6 +64,46 @@ class SolarPositionAccessor:
                 f"required a SolarSeries or SolarDataFrame instance. Got {name}"
             )
         return obj
+
+    @staticmethod
+    def clear_cache() -> None:
+        """Clear the in-memory solar-position cache.
+
+        Notes
+        -----
+        Use this when changing model options and forcing a full recomputation.
+
+        Examples
+        --------
+        >>> import solarpandas as sp
+        >>> sp.clear_solpos_cache()
+        """
+        _compute_cached_solpos.cache_clear()
+        logger.debug("solpos cache cleared")
+
+    @staticmethod
+    def get_cache_info():
+        """Return cache statistics for solar-position computations.
+
+        Returns
+        -------
+        dict[str, int | None]
+            Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
+
+        Examples
+        --------
+        >>> import solarpandas as sp
+        >>> info = sp.get_solpos_cache_info()
+        >>> "hits" in info
+        True
+        """
+        info = _compute_cached_solpos.cache_info()
+        return {
+            "hits": info.hits,
+            "misses": info.misses,
+            "current_size": info.currsize,
+            "max_size": info.maxsize,
+        }
 
     def compute(
         self, algorithm: str = "psa", refraction: bool = True, engine: str = "numexpr"

@@ -3,9 +3,8 @@
 
 from importlib.resources import files
 
-import matplotlib.pyplot as plt
 
-def register():
+def register_mplstyles():
     """Register bundled Matplotlib styles under the ``solarpandas-*`` prefix.
 
     Notes
@@ -18,10 +17,13 @@ def register():
     >>> from solarpandas.mplstyles import register
     >>> register()
     """
+    import matplotlib.pyplot as plt
     path = files("solarpandas.mplstyles")
     styles = plt.style.core.read_style_directory(path)
     for key, value in styles.items():
-        plt.style.library[f"solarpandas-{key}"] = value
+        name = f"solarpandas-{key}"
+        if name not in plt.style.library:
+            plt.style.library[name] = value
 
 QC_COLOR_FAILED = "#d46c4c"  # light red
 QC_COLOR_PASSED = "#e6f2ff"  # light blue

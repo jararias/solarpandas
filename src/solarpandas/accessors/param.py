@@ -6,13 +6,10 @@ from loguru import logger
 
 from ..base import SolarSeries, SolarDataFrame
 
-
 logger.disable(__name__)
 logger = logger.opt(colors=True)
 
 
-@pd.api.extensions.register_series_accessor("param")
-@pd.api.extensions.register_dataframe_accessor("param")
 class ParameterAccessor:
     """Accessor for derived irradiance parameters used in QC workflows.
 
