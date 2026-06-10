@@ -21,12 +21,12 @@ from .accessors import (
 from .base import SolarSeries, SolarDataFrame
 from .iohelpers import read_csv, read_parquet
 from .logtools import enable_logger
-from .mplstyles import register_mplstyles as _register_mplstyles  # OPTIMIZE: this line adds a latency of about 0.7 seconds at import time
+from .mplstyles import register_mplstyles as _register_mplstyles
 
 try:
     __version__ = importlib.metadata.version("solarpandas")
 except importlib.metadata.PackageNotFoundError:
     __version__ = "0.0.0"
 
-_register_mplstyles()
+_register_mplstyles()  # OPTIMIZE: this line adds a latency of about 0.7 seconds at import time
 enable_logger("solarpandas", level="INFO")
