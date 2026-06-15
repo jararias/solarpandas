@@ -64,7 +64,7 @@ docs-serve:
 .PHONY: docs-clean
 docs-clean:
 	@echo "🚀 Cleaning documentation build..."
-	@rm -rf site/
+	@rm -rf site/ .cache/
 
 .PHONY: publish-test
 publish-test:

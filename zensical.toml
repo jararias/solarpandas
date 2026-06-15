@@ -12,6 +12,10 @@ nav = [
     {"API Reference" = "api.md"},
 ]
 extra_css = ["stylesheets/extra.css"]
+extra.javascript = [
+    "javascripts/mathjax.js",
+    "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"
+]
 
 [project.theme]
 custom_dir = "overrides"
@@ -90,6 +94,9 @@ line_numbers = true
 [project.markdown_extensions.admonition]
 
 [project.markdown_extensions.footnotes]
+
+[project.markdown_extensions.pymdownx.arithmatex]
+generic = true
 
 [project.markdown_extensions.pymdownx.blocks.caption]
 prepend = true

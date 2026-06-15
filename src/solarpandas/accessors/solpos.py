@@ -299,7 +299,7 @@ class SolarPositionAccessor:
         -------
         SolarSeries
         """
-        return self.true_solar_time.dt.floor("D")
+        return self.true_solar_time.dt.date  # floor("D")
 
     @property
     def tsd(self) -> SolarSeries:

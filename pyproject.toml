@@ -46,6 +46,11 @@ Documentation = "https://jararias.github.io/solarpandas"
 Repository = "https://github.com/jararias/solarpandas"
 Issues = "https://github.com/jararias/solarpandas/issues"
 
+[project.optional-dependencies]
+pv = [
+    "pvlib>=0.15.1",
+]
+
 [dependency-groups]
 docs = [
     "mkdocstrings[python]>=1.0.4",

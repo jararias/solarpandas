@@ -119,3 +119,11 @@ class ParameterAccessor(
     on_load=lambda: logger.success("Parameter extension loaded")
 ):
     pass
+
+@register_dataframe_accessor("pv")
+class PVAccessor(
+    BaseLazyAccessor,
+    namespace=".pvirrad.PVAccessor",
+    on_load=lambda: logger.success("PV extension loaded")
+):
+    pass

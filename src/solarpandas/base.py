@@ -299,6 +299,27 @@ class SolarDataFrame(pd.DataFrame):
             return self.__class__(data=copy.copy(other), index=self.index, **kwargs)
         return self.__class__(data=copy.copy(other), **kwargs)
 
+    def resolve_closure(self):
+        sdf = self.copy()
+        if {"ghi", "dni", "dif"}.issubset(self.columns):
+            logger.debug("all components included.")
+            sdf["dif"] = sdf["dif"].where(sdf["dif"].notna(), sdf["ghi"] - sdf["dni"]*sdf.solpos.cosz)
+            sdf["dni"] = sdf["dni"].where(sdf["dni"].notna(), ((sdf["ghi"] - sdf["dif"])/sdf.solpos.cosz).where(sdf.solpos.sza.lt(89)))
+            sdf["ghi"] = sdf["ghi"].where(sdf["ghi"].notna(), sdf["dif"] + sdf["dni"]*sdf.solpos.cosz)
+        elif {"ghi", "dni"}.issubset(self.columns):
+            logger.debug("applying closure to compute column `dif` from `ghi` and `dni`")
+            sdf = sdf.assign(dif=lambda df: df.ghi - df.dni*df.solpos.cosz)
+        elif {"ghi", "dif"}.issubset(self.columns):
+            logger.debug("applying closure to compute column `dni` from `ghi` and `dif`")
+            sdf = sdf.assign(dni=lambda df: ((df.ghi - df.dif)/df.solpos.cosz).where(df.solpos.sza.lt(89)))
+        elif {"dni", "dif"}.issubset(self.columns):
+            logger.debug("applying closure to compute column `ghi` from `dni` and `dif`")
+            sdf = sdf.assign(ghi=lambda df: df.dif + df.dni*df.solpos.cosz)
+        else:
+            logger.warning("not enough components to apply closure")
+            return self
+        return sdf
+
     def __repr__(self):
         return super().__repr__() + _epilogue(self)
 
