@@ -50,6 +50,9 @@ cda_atmosphere = "merra2_cda"  # atmosphere dataset for clear-day analysis
 [bsrn]  # table for BSRN data retrieval settings
 # data_dir = "."  # local directory to store BSRN data (leave empty for default)
 server = "ftp.bsrn.awi.de"
+
+[solargis]  # table for Solargis data retrieval settings
+# data_dir = "."  # local directory to store Solargis data (leave empty for default)
 """
 
 

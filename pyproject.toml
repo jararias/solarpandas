@@ -50,6 +50,9 @@ Issues = "https://github.com/jararias/solarpandas/issues"
 pv = [
     "pvlib>=0.15.1",
 ]
+solargis = [
+    "sg-api-client",
+]
 
 [dependency-groups]
 docs = [
@@ -85,3 +88,6 @@ source-include = [
     "src/solarpandas/sample_data/*.parquet",
     "src/solarpandas/mplstyles/*.mplstyle",
 ]
+
+[tool.uv.sources]
+sg-api-client = { git = "https://gitlab.solargis.com/jose/sg-api-client", tag = "v0.3.0" }

@@ -2532,6 +2532,19 @@ wheels = [
 ]
 
 [[package]]
+name = "sg-api-client"
+version = "0.3.0"
+source = { git = "https://gitlab.solargis.com/jose/sg-api-client?tag=v0.3.0#30e021245f6d506e99fc0b174c1d40192eb3d94d" }
+dependencies = [
+    { name = "loguru" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+    { name = "python-dateutil" },
+    { name = "requests" },
+]
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2573,6 +2586,9 @@ dependencies = [
 pv = [
     { name = "pvlib" },
 ]
+solargis = [
+    { name = "sg-api-client" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -2606,11 +2622,12 @@ requires-dist = [
     { name = "platformdirs", specifier = ">=4.9.6" },
     { name = "pvlib", marker = "extra == 'pv'", specifier = ">=0.15.1" },
     { name = "pyarrow", specifier = ">=24.0.0" },
+    { name = "sg-api-client", marker = "extra == 'solargis'", git = "https://gitlab.solargis.com/jose/sg-api-client?tag=v0.3.0" },
     { name = "sparta-solar", specifier = ">=0.1.0" },
     { name = "sunwhere", specifier = ">=1.4.1" },
     { name = "tomlkit", specifier = ">=0.15.0" },
 ]
-provides-extras = ["pv"]
+provides-extras = ["pv", "solargis"]
 
 [package.metadata.requires-dev]
 dev = [
