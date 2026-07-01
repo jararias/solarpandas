@@ -30,7 +30,7 @@ tests:
 
 .PHONY: coverage
 coverage:
-	@echo "🚀 Testing unit tests and coverage analysis"
+	@echo "🚀 Performing unit tests and coverage analysis"
 	@mkdir -p reports badges
 	@uv run pytest tests \
 		--cov \
