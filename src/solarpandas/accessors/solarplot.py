@@ -153,8 +153,6 @@ if "diurnal" not in mpl.scale.get_scale_names():
     mpl.scale.register_scale(_DiurnalScale)
 
 
-@pd.api.extensions.register_series_accessor("solarplot")
-@pd.api.extensions.register_dataframe_accessor("solarplot")
 class SolarPlotAccessor:
     """Accessor with high-level plotting methods for solar time series.
 

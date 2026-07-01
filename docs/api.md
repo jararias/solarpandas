@@ -24,6 +24,8 @@ This page is generated with mkdocstrings.
 
 ::: solarpandas.accessors.param
 
+::: solarpandas.accessors.pvirrad
+
 ## Quality Control
 
 ::: solarpandas.qcontrol.helpers

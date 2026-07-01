@@ -33,7 +33,7 @@ def _compute_cached_clearsky(
         return atmos_obj.at_sites(*args).compute(model)
 
 
-def clear_clearsky_cache() -> None:
+def clear_cache() -> None:
     """Clear the in-memory clear-sky irradiance cache.
 
     Examples
@@ -45,7 +45,7 @@ def clear_clearsky_cache() -> None:
     logger.debug("clearsky cache cleared")
 
 
-def get_clearsky_cache_info():
+def get_cache_info():
     """Return cache statistics for clear-sky computations.
 
     Returns
@@ -107,6 +107,30 @@ class BaseClearskyIrradianceAccessor:
             )
         return obj
 
+    @staticmethod
+    def clear_cache() -> None:
+        """Clear the in-memory clear-sky irradiance cache.
+        """
+        _compute_cached_clearsky.cache_clear()
+        logger.debug("clearsky cache cleared")
+
+    @staticmethod
+    def get_cache_info():
+        """Return cache statistics for clear-sky computations.
+
+        Returns
+        -------
+        dict[str, int | None]
+            Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
+        """
+        info = _compute_cached_clearsky.cache_info()
+        return {
+            "hits": info.hits,
+            "misses": info.misses,
+            "current_size": info.currsize,
+            "max_size": info.maxsize,
+        }
+
     def _get_cached_clearsky(self, variable: Literal["ghi", "dni", "dif", "csi"]):
         logger.debug(
             f"retrieving `{variable}` from clearsky cache for site at "
@@ -164,8 +188,6 @@ class BaseClearskyIrradianceAccessor:
         return self._get_cached_clearsky("csi")
 
 
-@pd.api.extensions.register_series_accessor("clearsky")
-@pd.api.extensions.register_dataframe_accessor("clearsky")
 class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
     """Accessor for clear-sky irradiance variables (GHI, DNI, DIF, CSI).
 
@@ -227,8 +249,6 @@ class ClearskyIrradianceAccessor(BaseClearskyIrradianceAccessor):
         return self._sdf.replace_data(df_result)
 
 
-@pd.api.extensions.register_series_accessor("lta")
-@pd.api.extensions.register_dataframe_accessor("lta")
 class LTAIrradianceAccessor(BaseClearskyIrradianceAccessor):
     """Accessor for long-term-average clear-sky irradiance products.
 
@@ -246,8 +266,6 @@ class LTAIrradianceAccessor(BaseClearskyIrradianceAccessor):
             raise ValueError(f"invalid clearsky atmosphere `{self._atmosphere}`")
 
 
-@pd.api.extensions.register_series_accessor("cda")
-@pd.api.extensions.register_dataframe_accessor("cda")
 class CDAIrradianceAccessor(BaseClearskyIrradianceAccessor):
     """Accessor for clear-day-analysis clear-sky irradiance products.
 

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "solarpandas"
-version = "0.1.0"
+version = "0.1.1"
 description = "Analysis of solar irradiance time series with pandas"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -25,16 +25,17 @@ classifiers = [
 ]
 
 dependencies = [
+    "caelus-solar>=0.3.0",
     "colorcet>=3.2.1",
     "datashader>=0.19.1",
     "loguru>=0.7.3",
     "lxml>=6.1.1",
-    "matplotlib>=3.10.9",
-    "numpy>=2.4.4",
+    "matplotlib~=3.10.9",
+    "numpy~=2.4.4",
     "pandas>=3.0.2",
     "platformdirs>=4.9.6",
     "pyarrow>=24.0.0",
-    "sparta-solar>=0.1.0",
+    "sparta-solar>=0.2.1",
     "sunwhere>=1.4.1",
     "tomlkit>=0.15.0",
 ]
@@ -44,6 +45,14 @@ Homepage = "https://github.com/jararias/solarpandas"
 Documentation = "https://jararias.github.io/solarpandas"
 Repository = "https://github.com/jararias/solarpandas"
 Issues = "https://github.com/jararias/solarpandas/issues"
+
+[project.optional-dependencies]
+pv = [
+    "pvlib>=0.15.1",
+]
+solargis = [
+    "solarpandas-solargis-ext",
+]
 
 [dependency-groups]
 docs = [
@@ -79,3 +88,6 @@ source-include = [
     "src/solarpandas/sample_data/*.parquet",
     "src/solarpandas/mplstyles/*.mplstyle",
 ]
+
+[tool.uv.sources]
+solarpandas-solargis-ext = { git = "https://gitlab.solargis.com/jose/solarpandas-solargis-ext", rev = "v0.1.0" }

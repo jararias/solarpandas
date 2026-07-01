@@ -1,5 +1,5 @@
 
-from .base import SolarDataFrame, SolarSeries
+from .base import SolarDataFrame
 
 
 def read_csv(filename, **kwargs):

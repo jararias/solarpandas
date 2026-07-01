@@ -26,3 +26,5 @@ except Exception as exc:
 green_tick = "\033[92m\u2714\033[0m"  # red cross
 print(f"`solarpandas` imported with __version__ = {sp.__version__} {green_tick}")
 del(green_tick)
+
+data = sp.sample_data.load_carpentras_data()

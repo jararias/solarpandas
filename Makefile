@@ -18,13 +18,10 @@ init-venv:
 .PHONY: clean
 clean:
 	@echo "🚀 Cleaning project"
-	@rm -rf build
-	@rm -rf dist
-	@rm -rf site
-	@rm -rf *.egg-info
+	@rm -rf {build,dist,site}
 	@rm -rf .pytest_cache
-	@rm -f MANIFEST
 	@find . -name "__pycache__" -print0 | xargs -0 -I {} /bin/rm -rf "{}"
+	@find . -name "*.egg-info" -print0 | xargs -0 -I {} /bin/rm -rf "{}"
 	@echo "✅ Cleaned"
 
 .PHONY: tests
@@ -33,7 +30,7 @@ tests:
 
 .PHONY: coverage
 coverage:
-	@echo "🚀 Testing unit tests and coverage analysis"
+	@echo "🚀 Performing unit tests and coverage analysis"
 	@mkdir -p reports badges
 	@uv run pytest tests \
 		--cov \
@@ -64,7 +61,7 @@ docs-serve:
 .PHONY: docs-clean
 docs-clean:
 	@echo "🚀 Cleaning documentation build..."
-	@rm -rf site/
+	@rm -rf site/ .cache/
 
 .PHONY: publish-test
 publish-test:
