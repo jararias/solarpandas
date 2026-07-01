@@ -64,6 +64,43 @@ def _run_cached_qc(hashdf: HashableDF) -> SolarDataFrame:
     return pd.concat(tests, axis=1)
 
 
+def clear_cache() -> None:
+    """Clear the in-memory quality-control cache.
+
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> sp.clear_qc_cache()
+    """
+    _run_cached_qc.cache_clear()
+    logger.debug("qc cache cleared")
+
+
+def get_cache_info():
+    """Return cache statistics for quality-control computations.
+
+    Returns
+    -------
+    dict[str, int | None]
+        Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
+
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> info = sp.get_qc_cache_info()
+    >>> "misses" in info
+    True
+    """
+    from .qcontrol import _run_cached_qc
+    info = _run_cached_qc.cache_info()
+    return {
+        "hits": info.hits,
+        "misses": info.misses,
+        "current_size": info.currsize,
+        "max_size": info.maxsize,
+    }
+
+
 _COMPONENT_TO_TEST_MAP = {
     "ghi": {
         "1-component": ["ghi_ppl", "ghi_erl"],

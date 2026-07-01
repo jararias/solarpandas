@@ -27,8 +27,8 @@ class QCFlagAccessor:
     """
 
     def __init__(self, series: pd.Series | SolarSeries) -> None:
-        if not isinstance(series.dtype, QCFlagDtype):
-            raise AttributeError(
+        if not series.dtype == QCFlagDtype():
+            raise TypeError(
                 "The .flag accessor is only available for Series with dtype 'QCFlagDtype'."
             )
         self._series = series

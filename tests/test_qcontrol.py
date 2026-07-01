@@ -39,7 +39,7 @@ class TestQualityControlAccessorBasics:
         assert len(carpentras_data.qc.tests) == len(carpentras_data)
 
     def test_getitem_returns_series(self, carpentras_data):
-        result = carpentras_data.qc["ghi_ppl"]
+        result = carpentras_data.qc.tests["ghi_ppl"]
         assert isinstance(result, pd.Series)
 
     def test_getattr_returns_series(self, carpentras_data):
@@ -48,7 +48,7 @@ class TestQualityControlAccessorBasics:
 
     def test_getitem_unknown_test_raises(self, carpentras_data):
         with pytest.raises(KeyError):
-            carpentras_data.qc["nonexistent_test"]
+            carpentras_data.qc.tests["nonexistent_test"]
 
     def test_getattr_unknown_test_raises(self, carpentras_data):
         with pytest.raises(AttributeError):
@@ -68,7 +68,7 @@ class TestQCValues:
     def test_ghi_ppl_qcflag_dtype(self, carpentras_data):
         from solarpandas.types import QCFlagDtype
 
-        result = carpentras_data.qc["ghi_ppl"]
+        result = carpentras_data.qc.ghi_ppl
         assert isinstance(result.dtype, QCFlagDtype)
 
 
@@ -186,10 +186,10 @@ class TestQCFlagAccessor:
 
     @pytest.fixture
     def flag_series(self, carpentras_data):
-        return carpentras_data.qc["ghi_ppl"]
+        return carpentras_data.qc.ghi_ppl
 
     def test_accessor_unavailable_on_plain_series(self, carpentras_data):
-        with pytest.raises(AttributeError):
+        with pytest.raises(TypeError):
             carpentras_data["ghi"].flag  # noqa: B018
 
     def test_fails_is_boolean_series(self, flag_series):

@@ -1,4 +1,3 @@
-
 # ruff: noqa: F401
 
 import abc
@@ -22,7 +21,9 @@ class BaseLazyAccessor(metaclass=abc.ABCMeta):
     def __init__(self, sdf_obj):
         self._sdf = sdf_obj
 
-    def __init_subclass__(cls, namespace: str, on_load: Callable | None = None, **kwargs):
+    def __init_subclass__(
+        cls, namespace: str, on_load: Callable | None = None, **kwargs
+    ):
         super().__init_subclass__(**kwargs)
         cls._namespace = namespace
         cls._on_load = on_load
@@ -38,6 +39,12 @@ class BaseLazyAccessor(metaclass=abc.ABCMeta):
         return cls._accessor_cls(self._sdf)
 
     def __getattr__(self, name):
+        # print(f"Lazy loading accessor '{self.__class__.__name__}' for '{self._sdf.__class__.__name__}'...")
+        # print(f"  >>> namespace: {self._namespace}")
+        # print(f"  >>> accessor_cls: {self._accessor_cls}")
+        # print(f"  >>> sdf class: {self._sdf.__class__}")
+        # print(f"  >>> name: {name}")
+        # print(f"  >>> _load(): {self._load()}")
         return getattr(self._load(), name)
 
 
@@ -46,84 +53,100 @@ class BaseLazyAccessor(metaclass=abc.ABCMeta):
 class ClearskyIrradianceAccessor(
     BaseLazyAccessor,
     namespace=".clearsky.ClearskyIrradianceAccessor",
-    on_load=lambda: logger.success("Clear-sky extension loaded")
+    on_load=lambda: logger.success("Clear-sky extension loaded"),
 ):
     pass
+
 
 @register_series_accessor("cda")
 @register_dataframe_accessor("cda")
 class CDAIrradianceAccessor(
     BaseLazyAccessor,
     namespace=".clearsky.CDAIrradianceAccessor",
-    on_load=lambda: logger.success("CDA extension loaded")
+    on_load=lambda: logger.success("CDA extension loaded"),
 ):
     pass
+
 
 @register_series_accessor("lta")
 @register_dataframe_accessor("lta")
 class LTAIrradianceAccessor(
     BaseLazyAccessor,
     namespace=".clearsky.LTAIrradianceAccessor",
-    on_load=lambda: logger.success("LTA extension loaded")
+    on_load=lambda: logger.success("LTA extension loaded"),
 ):
     pass
+
 
 @register_dataframe_accessor("qc")
 class QualityControlAccessor(
     BaseLazyAccessor,
     namespace=".qcontrol.QualityControlAccessor",
-    on_load=lambda: logger.success("Quality-control extension loaded")
+    on_load=lambda: logger.success("Quality-control extension loaded"),
 ):
     pass
+
 
 @register_series_accessor("flag")
 class QCFlagAccessor(
     BaseLazyAccessor,
     namespace=".qcflag.QCFlagAccessor",
-    on_load=lambda: logger.success("QC-flag extension loaded")
+    on_load=lambda: logger.success("QC-flag extension loaded"),
 ):
-    pass
+    def __init__(self, series):
+        from ..types import QCFlagDtype
+
+        if series.dtype != QCFlagDtype():
+            raise TypeError(
+                "The .flag accessor is only available for Series with dtype 'QCFlagDtype'."
+            )
+        super().__init__(series)
+
 
 @register_series_accessor("skyclass")
 @register_dataframe_accessor("skyclass")
 class SkyClassAccessor(
     BaseLazyAccessor,
     namespace=".skyclass.SkyClassAccessor",
-    on_load=lambda: logger.success("Sky classification extension loaded")
+    on_load=lambda: logger.success("Sky classification extension loaded"),
 ):
     pass
+
 
 @register_series_accessor("solarplot")
 @register_dataframe_accessor("solarplot")
 class SolarPlotAccessor(
     BaseLazyAccessor,
     namespace=".solarplot.SolarPlotAccessor",
-    on_load=lambda: logger.success("Plotting extension loaded")
+    on_load=lambda: logger.success("Plotting extension loaded"),
 ):
     pass
+
 
 @register_series_accessor("solpos")
 @register_dataframe_accessor("solpos")
 class SolarPositionAccessor(
     BaseLazyAccessor,
     namespace=".solpos.SolarPositionAccessor",
-    on_load=lambda: logger.success("Solar-position extension loaded")
+    on_load=lambda: logger.success("Solar-position extension loaded"),
 ):
     pass
+
 
 @register_series_accessor("param")
 @register_dataframe_accessor("param")
 class ParameterAccessor(
     BaseLazyAccessor,
     namespace=".param.ParameterAccessor",
-    on_load=lambda: logger.success("Parameter extension loaded")
+    on_load=lambda: logger.success("Parameter extension loaded"),
 ):
     pass
+
 
 @register_dataframe_accessor("pv")
 class PVAccessor(
     BaseLazyAccessor,
     namespace=".pvirrad.PVAccessor",
-    on_load=lambda: logger.success("PV extension loaded")
+    on_load=lambda: logger.success("PV extension loaded"),
 ):
     pass

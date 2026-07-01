@@ -77,11 +77,10 @@ class TestSolarPositionProperties:
             (utc_times + expected_shift).values,
         )
 
-    def test_tsd_is_tst_floored_to_day(self, solar_series):
+    def test_tsd_is_tst_date(self, solar_series):
         tst = solar_series.solpos.tst
         tsd = solar_series.solpos.tsd
-        floored = tst.dt.floor("D")
-        assert tsd.equals(floored)
+        assert tsd.equals(tst.dt.date)
 
     def test_solpos_on_dataframe(self, solar_dataframe):
         sza = solar_dataframe.solpos.sza

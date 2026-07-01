@@ -18,6 +18,21 @@ from .accessors import (
     SolarPositionAccessor,
 )
 
+from .accessors.clearsky import (
+    clear_cache as clear_clearsky_cache,
+    get_cache_info as get_clearsky_cache_info,
+)
+
+from .accessors.qcontrol import (
+    clear_cache as clear_qc_cache,
+    get_cache_info as get_qc_cache_info,
+)
+
+from .accessors.solpos import (
+    clear_cache as clear_solpos_cache,
+    get_cache_info as get_solpos_cache_info,
+)
+
 from .base import SolarSeries, SolarDataFrame
 from .iohelpers import read_csv, read_parquet
 from .logtools import enable_logger

@@ -1,7 +1,8 @@
 ## v0.2.0
-#### June, 2026
-- Added lazy import of accessor extensions to shorten the lag at importing time
-- Added the skyclass accessor that provides multiple sky classification algorithms
+#### July, 2026
+- Lazy import of accessor extensions
+- Skyclass accessor for multiple sky classification algorithms
+- Basic PV support via the `pv` accessor
 
 ## v0.1.0
 #### June, 2026

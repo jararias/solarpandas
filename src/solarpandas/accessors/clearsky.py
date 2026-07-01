@@ -33,6 +33,42 @@ def _compute_cached_clearsky(
         return atmos_obj.at_sites(*args).compute(model)
 
 
+def clear_cache() -> None:
+    """Clear the in-memory clear-sky irradiance cache.
+
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> sp.clear_clearsky_cache()
+    """
+    _compute_cached_clearsky.cache_clear()
+    logger.debug("clearsky cache cleared")
+
+
+def get_cache_info():
+    """Return cache statistics for clear-sky computations.
+
+    Returns
+    -------
+    dict[str, int | None]
+        Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
+
+    Examples
+    --------
+    >>> import solarpandas as sp
+    >>> info = sp.get_clearsky_cache_info()
+    >>> "current_size" in info
+    True
+    """
+    info = _compute_cached_clearsky.cache_info()
+    return {
+        "hits": info.hits,
+        "misses": info.misses,
+        "current_size": info.currsize,
+        "max_size": info.maxsize,
+    }
+
+
 class BaseClearskyIrradianceAccessor:
     """Base class providing cached clear-sky irradiance properties.
 
@@ -74,11 +110,6 @@ class BaseClearskyIrradianceAccessor:
     @staticmethod
     def clear_cache() -> None:
         """Clear the in-memory clear-sky irradiance cache.
-
-        Examples
-        --------
-        >>> import solarpandas as sp
-        >>> sp.clear_clearsky_cache()
         """
         _compute_cached_clearsky.cache_clear()
         logger.debug("clearsky cache cleared")
@@ -91,13 +122,6 @@ class BaseClearskyIrradianceAccessor:
         -------
         dict[str, int | None]
             Dictionary with ``hits``, ``misses``, ``current_size`` and ``max_size``.
-
-        Examples
-        --------
-        >>> import solarpandas as sp
-        >>> info = sp.get_clearsky_cache_info()
-        >>> "current_size" in info
-        True
         """
         info = _compute_cached_clearsky.cache_info()
         return {
