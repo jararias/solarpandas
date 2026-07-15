@@ -50,9 +50,6 @@ Issues = "https://github.com/jararias/solarpandas/issues"
 pv = [
     "pvlib>=0.15.1",
 ]
-solargis = [
-    "solarpandas-solargis-ext",
-]
 
 [dependency-groups]
 docs = [
@@ -88,6 +85,3 @@ source-include = [
     "src/solarpandas/sample_data/*.parquet",
     "src/solarpandas/mplstyles/*.mplstyle",
 ]
-
-[tool.uv.sources]
-solarpandas-solargis-ext = { git = "https://gitlab.solargis.com/jose/solarpandas-solargis-ext", rev = "v0.1.0" }
