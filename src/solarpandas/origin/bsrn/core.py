@@ -584,7 +584,16 @@ def load_data_from_bsrn_files(
         retrievals = workers.starmap(parse_bsrn_file_with_extra_records, tasks, chunksize=1)
 
     # remove empty retrievals (files not found or with no supported logical records)
-    if not (retrievals := [retr for retr in retrievals if len(retr) > 0]):
+    def is_missing(retrieval: dict) -> bool:
+        if not retrieval:
+            return True
+        if "LR0100" not in retrieval or retrieval["LR0100"].empty:
+            year = retrieval.get("year")
+            month = retrieval.get("month")
+            logger.warning(f"no data retrieved for {site=}, {year=}, and {month=}")
+            return True
+        return False
+    if not (retrievals := [retr for retr in retrievals if not is_missing(retr)]):
         logger.warning(f"no data retrieved for {site=}, {years=}, and {months=}")
         return None
 
@@ -838,9 +847,12 @@ def parse_bsrn_file(
     logger.debug(f"the supported logical records are: {SUPPORTED_LOGICAL_RECORDS}")
 
     if check_remote_on_missing_file and not path.exists():
-        path = helpers.fetch_site_data_from_ftp(
-            path.name, path.parent, timeout=timeout
-        )
+        try:
+            path = helpers.fetch_site_data_from_ftp(
+                path.name, path.parent, timeout=timeout
+            )
+        except Exception as exc:
+            logger.warning(exc)
 
     if not path.exists():
         logger.error(

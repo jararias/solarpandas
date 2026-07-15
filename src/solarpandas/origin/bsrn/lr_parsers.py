@@ -251,11 +251,16 @@ def parse_logical_record_0004(lines: list[str], **kwargs) -> dict[str, Any]:
     values = parse(next(ilines), fortran_pattern="3(X,I2)")
     elements['horizon_changed_on'] = dict(zip(('day', 'hour', 'minute'), values))
 
-    values = [parse(line, fortran_pattern="11(X,I3,X,I2)") for line in ilines]
+    # NOTE: I have found some station data without horizon information (e.g., `sel`),
+    #  hence it would produce a failure if it is not detected and managed properly.
+    elements['horizon_azimuth'] = []
+    elements['horizon_elevation'] = []
+    if not (values := [parse(line, fortran_pattern="11(X,I3,X,I2)") for line in ilines]):
+        logger.warning("LR0004 has no horizon information. Setting horizon_azimuth and horizon_elevation to empty lists.")
+        return elements
     values = [e for e in functools.reduce(lambda a, b: a + b, values) if e != -1]
     elements['horizon_azimuth'] = values[0::2]
     elements['horizon_elevation'] = values[1::2]
-
     return elements
 
 

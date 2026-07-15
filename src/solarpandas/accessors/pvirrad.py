@@ -462,6 +462,7 @@ class PVAccessor:
         inverter_effic: float = 0.96,
         method: Literal["integral", "explicit"] = "integral",
         integral_bins: np.ndarray[tuple[int]] | int = 200,
+        mask: pd.Series | None = None
     ) -> float | pd.Series | SolarDataFrame:
         r"""Calculate the clipping losses of a PV system assuming the pvlib's PVWatts inverter model.
 
@@ -475,7 +476,8 @@ class PVAccessor:
             `dc_to_ac_ratio` must be a single value.
         units: str, default "fraction"
             Units for the output clipping losses. Options are "fraction" for the fraction of DC
-            power yield lost due to clipping, and "W" for the average DC power lost due to clipping.
+            power yield lost due to clipping, "W" for the average DC power lost due to clipping,
+            and "Wh" for the energy lost due to clipping.
         yield_dc_kwargs: dict, default None
             Keyword arguments to be passed to the `yield_dc` method.
         inverter_effic: float, default 0.96
@@ -484,7 +486,9 @@ class PVAccessor:
             Method to use for calculating clipping losses. Options are "integral" and "explicit".
         integral_bins: int or array-like, default 200
             Number of bins to evaluate the integral for the integral method.
-        
+        mask: pd.Series | None, default None
+            A boolean mask to filter the time series data.
+
         Returns
         -------
         float or pd.Series or SolarDataFrame
@@ -530,6 +534,7 @@ class PVAccessor:
         max_sza = 180.  # deg
         sza = pdc.solpos.zenith
         diurnal = sza.lt(max_sza)
+        mask = diurnal if mask is None else (diurnal & mask)
 
         def compute_clipping_losses_numpy(
             pdc: np.ndarray[tuple[int]]
@@ -576,6 +581,10 @@ class PVAccessor:
             losses, pac = compute_clipping_losses_numpy(pdc.to_numpy())
             if units == "fraction":
                 logger.warning("`units='fraction'` ignored: clipping losses time series are provided in Watts.")
+            if units == "Wh":
+                watts_to_wattshour = float(infer_time_step(pdc) / pd.Timedelta(hours=1))  # h
+                losses = losses * watts_to_wattshour  # [Wh]
+                pac = pac * watts_to_wattshour  # [Wh]
             return pdc.to_frame().assign(
                 pac=pac,
                 clipping_losses=np.squeeze(losses))
@@ -583,11 +592,11 @@ class PVAccessor:
         if method == "explicit":
             logger.debug("Calculating clipping losses using the explicit method")
             losses, _ = compute_clipping_losses_numpy(pdc.to_numpy())  # (n_times, n_ratios) [Watts]
-            total_losses = np.nanmean(losses[diurnal], axis=0)  # (n_ratios,) [Watts]
+            total_losses = np.nanmean(losses[mask], axis=0)  # (n_ratios,) [Watts]
 
         elif method == "integral":
             logger.debug("Calculating clipping losses using the integral method")
-            pdf, bin_edges = np.histogram(pdc.loc[diurnal].dropna(), bins=integral_bins, density=True)  # pdf: (n_bins,) [Watts-1]
+            pdf, bin_edges = np.histogram(pdc.loc[mask].dropna(), bins=integral_bins, density=True)  # pdf: (n_bins,) [Watts-1]
             pdc_intervals = np.diff(bin_edges)  # bin intervals: (n_bins,) [Watts]
             pdc_centers = (bin_edges[1:] + bin_edges[:-1]) / 2  # bin centers: (n_bins,) [Watts]
             p_ac_peak = p_dc_peak / dc_to_ac_ratio  # (n_ratios,) [Watts]
@@ -601,6 +610,10 @@ class PVAccessor:
 
         if units == "fraction":
             total_losses = total_losses / pdc.where(diurnal).mean()  # [-]
+
+        if units == "Wh":
+            watts_to_wattshour = float(infer_time_step(pdc) / pd.Timedelta(hours=1))  # h
+            total_losses = total_losses * len(pdc.loc[mask].dropna()) * watts_to_wattshour  # [Wh]
 
         if total_losses.size == 1:
             return total_losses.item()
